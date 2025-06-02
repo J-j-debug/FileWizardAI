@@ -76,6 +76,95 @@ async def get_search_files(root_path: str, recursive: bool, required_exts: str, 
     return files
 
 
+@app.get("/llm_providers")
+async def get_llm_providers():
+    return {
+        "providers": [
+            {
+                "name": "Groq",
+                "text_endpoint": "https://api.groq.com/openai/v1",
+                "image_endpoint": "https://api.groq.com/openai/v1",
+                "text_models": ["llama3-70b-8192", "llama3-8b-8192", "mixtral-8x7b-32768"],
+                "image_models": ["llava-v1.5-7b-4096-preview"],
+                "api_key_prefix": "gsk_"
+            },
+            {
+                "name": "OpenAI",
+                "text_endpoint": "https://api.openai.com/v1",
+                "image_endpoint": "https://api.openai.com/v1",
+                "text_models": ["gpt-4o", "gpt-4", "gpt-3.5-turbo"],
+                "image_models": ["gpt-4o", "gpt-4-vision-preview"],
+                "api_key_prefix": "sk-"
+            },
+            {
+                "name": "Ollama",
+                "text_endpoint": "http://localhost:11434/v1",
+                "image_endpoint": "http://localhost:11434/v1",
+                "text_models": ["gemma2:latest", "llama3:latest", "mistral:latest"],
+                "image_models": ["moondream:latest", "llava:latest"],
+                "api_key_prefix": "ollama"
+            },
+            {
+                "name": "Hugging Face",
+                "text_endpoint": "https://api-inference.huggingface.co/v1",
+                "image_endpoint": "https://api-inference.huggingface.co/v1",
+                "text_models": ["microsoft/Phi-3-mini-4k-instruct", "mistralai/Mistral-7B-Instruct-v0.1"],
+                "image_models": ["nlpconnect/vit-gpt2-image-captioning"],
+                "api_key_prefix": "hf_"
+            }
+        ]
+    }
+
+
+@app.post("/llm_config")
+async def update_llm_config(request: Request):
+    data = await request.json()
+    
+    # Create .env content
+    env_content = f"""# API and MODEL used for documents processing
+TEXT_API_END_POINT={data['text_endpoint']}
+TEXT_MODEL_NAME={data['text_model']}
+TEXT_API_KEYS={data['text_api_keys']}
+
+# API and MODEL used for images processing
+IMAGE_API_END_POINT={data['image_endpoint']}
+IMAGE_MODEL_NAME={data['image_model']}
+IMAGE_API_KEYS={data['image_api_keys']}
+"""
+    
+    # Write to .env file
+    try:
+        with open('.env', 'w') as f:
+            f.write(env_content)
+        return {"message": "LLM configuration updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating configuration: {e}")
+
+
+@app.get("/current_llm_config")
+async def get_current_llm_config():
+    try:
+        from .settings import Settings
+        settings = Settings()
+        return {
+            "text_endpoint": settings.TEXT_API_END_POINT,
+            "text_model": settings.TEXT_MODEL_NAME,
+            "text_api_keys": settings.TEXT_API_KEYS,
+            "image_endpoint": settings.IMAGE_API_END_POINT,
+            "image_model": settings.IMAGE_MODEL_NAME,
+            "image_api_keys": settings.IMAGE_API_KEYS
+        }
+    except Exception as e:
+        return {
+            "text_endpoint": "",
+            "text_model": "",
+            "text_api_keys": [],
+            "image_endpoint": "",
+            "image_model": "",
+            "image_api_keys": []
+        }
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}

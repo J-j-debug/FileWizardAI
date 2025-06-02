@@ -5,6 +5,7 @@ import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { FolderTreeComponent } from './components/folder-tree.component';
 import { SearchFilesComponent } from './components/search-files.component';
+import { LlmSettingsComponent } from './components/llm-settings.component';
 import { MatTreeModule } from "@angular/material/tree";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
@@ -23,7 +24,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   declarations: [
     AppComponent,
     FolderTreeComponent,
-    SearchFilesComponent
+    SearchFilesComponent,
+    LlmSettingsComponent
   ],
   imports: [BrowserModule, BrowserAnimationsModule, MatTreeModule, MatIconModule, MatButtonModule, HttpClientModule,
     MatCheckboxModule, FormsModule, MatSelectModule, ReactiveFormsModule, MatFormFieldModule,

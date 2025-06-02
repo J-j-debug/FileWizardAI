@@ -28,4 +28,16 @@ export class DataService {
   openFile(fileToOpen: any): Observable<any> {
     return this.http.post<any>(this.apiUrl + "/open_file", { file_path: fileToOpen });
   }
+
+  getLLMProviders(): Promise<any> {
+    return this.http.get<any>(this.apiUrl + "/llm_providers").toPromise();
+  }
+
+  getCurrentLLMConfig(): Promise<any> {
+    return this.http.get<any>(this.apiUrl + "/current_llm_config").toPromise();
+  }
+
+  updateLLMConfig(configData: any): Promise<any> {
+    return this.http.post<any>(this.apiUrl + "/llm_config", configData).toPromise();
+  }
 }
