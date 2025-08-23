@@ -8,18 +8,21 @@ import json
 import sys
 import requests
 import logging
+from .database_interface import DatabaseInterface
 
 logger = logging.getLogger()
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file='.env')
+    model_config = SettingsConfigDict(env_file='.env', extra='ignore')
     TEXT_API_END_POINT: str
     TEXT_MODEL_NAME: str
     TEXT_API_KEYS: list[str]
     IMAGE_API_END_POINT: str
     IMAGE_MODEL_NAME: str
     IMAGE_API_KEYS: list[str]
+    DATABASE_TYPE: str = "sqlite"
+    DATABASE_URL: str = "FileWizardAi.db"
 
 
 class Model:
@@ -37,17 +40,15 @@ class Model:
     cnt_txt = 0
     cnt_img = 0
 
-    def __init__(self):
+    def __init__(self, db: DatabaseInterface):
+        self.db = db
         self.async_text_clients = [AsyncOpenAI(base_url=self.TEXT_API_END_POINT, api_key=api_key)
                                    for api_key in self.TEXT_API_KEYS]
         self.async_image_clients = [AsyncOpenAI(base_url=self.IMAGE_API_END_POINT, api_key=api_key)
                                     for api_key in self.IMAGE_API_KEYS]
 
     async def summarize_image_api(self, image_path):
-        prompt = """
-        Describe this image in the most concise way possible, capturing only the essential elements and details. 
-        Aim for a very brief yet accurate summary.
-        """
+        prompt = self.db.get_prompt("summarize_image_prompt")
         attempt = 0
         summary = ""
         # Huggingface API doesn't support image completions
@@ -101,12 +102,7 @@ class Model:
         return summary
 
     async def summarize_document_api(self, doc_text):
-        prompt = """
-        You will be provided with the contents of a file. Provide a summary of the contents. 
-        The purpose of the summary is to organize files based on their content. 
-        To this end provide a concise but informative summary. Make the summary as specific to the file as possible.
-        It is very important that you only provide the final output without any additional comments or remarks.
-        """.strip()
+        prompt = self.db.get_prompt("summarize_document_prompt")
         attempt = 0
         summary = ""
         # To avoid rate_limit_exceeded or api error
@@ -146,30 +142,7 @@ class Model:
         return file_tree
 
     async def create_file_tree_api_chunk(self, summaries: list):
-        file_prompt = """
-        You will be provided with list of source files and a summary of their contents.
-        For each file,propose a new path and filename, using a directory structure that optimally organizes the files using known conventions and best practices.
-        Follow good naming conventions. Here are a few guidelines
-        - Think about your files : What related files are you working with?
-        - Identify metadata (for example, date, sample, experiment) : What information is needed to easily locate a specific file?
-        - Abbreviate or encode metadata
-        - Use versioning : Are you maintaining different versions of the same file?
-        - Think about how you will search for your files : What comes first?
-        - Deliberately separate metadata elements : Avoid spaces or special characters in your file names
-        If the file is already named well or matches a known convention, set the destination path to the same as the source path.
-
-        Your response must be a JSON object with the following schema, dont add any extra text except the json:
-        ```json
-        {
-            "files": [
-                {
-                    "src_path": "original file path",
-                    "dst_path": "new file path under proposed directory structure with proposed file name"
-                }
-            ]
-        }
-        ```
-        """.strip()
+        file_prompt = self.db.get_prompt("create_file_tree_prompt")
         attempt = 0
         file_tree = []  # Initialize as empty list
         while attempt < 10:
@@ -211,20 +184,7 @@ class Model:
         return files
 
     async def search_files_api_chunk(self, summaries: list, search_query: str):
-        file_prompt = """
-        You will be provided with list of source files and a summary of their contents:
-        return the files that matches or have a similar content to this search query: """ + search_query + """
-
-        Your response must be a JSON object with the following schema, dont add any extra text except the json:
-        ```json
-        {
-        "files": [
-                {
-                    "file": "File that matches or have a similar content to the search query"
-                }
-            ]
-        }
-        """.strip()
+        file_prompt = self.db.get_prompt("search_files_prompt").format(search_query=search_query)
         while True:
             try:
                 chat_completion = await self.async_text_clients[

@@ -40,4 +40,12 @@ export class DataService {
   updateLLMConfig(configData: any): Promise<any> {
     return this.http.post<any>(this.apiUrl + "/llm_config", configData).toPromise();
   }
+
+  getPrompts(): Promise<any> {
+    return this.http.get<any>(this.apiUrl + "/prompts").toPromise();
+  }
+
+  updatePrompt(prompt: any): Promise<any> {
+    return this.http.put<any>(this.apiUrl + "/prompts", prompt).toPromise();
+  }
 }

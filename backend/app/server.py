@@ -1,11 +1,12 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .run import run, update_file, search_files
+from .run import run, update_file, search_files, db
 import os
 import subprocess
 import platform
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 app = FastAPI()
 app.add_middleware(
@@ -168,6 +169,20 @@ async def get_current_llm_config():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+class Prompt(BaseModel):
+    prompt_name: str
+    prompt_text: str
+
+@app.get("/prompts")
+async def get_prompts():
+    return db.get_all_prompts()
+
+@app.put("/prompts")
+async def update_prompt(prompt: Prompt):
+    db.update_prompt(prompt.prompt_name, prompt.prompt_text)
+    return {"message": "Prompt updated successfully"}
 
 
 if __name__ == "__main__":

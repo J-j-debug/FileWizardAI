@@ -6,10 +6,11 @@ import os
 import logging
 from pathlib import Path
 import hashlib
+import json
 
 from .database import SQLiteDB
-from .settings import CustomFormatter
-from .settings import Model
+from .supabase_db import SupabaseDB
+from .settings import CustomFormatter, Model, Settings
 import shutil
 
 logger = logging.getLogger()
@@ -18,21 +19,100 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 ch.setFormatter(CustomFormatter())
 logger.addHandler(ch)
-model = Model()
-db = SQLiteDB()
+
+def get_db_instance():
+    settings = Settings()
+    if settings.DATABASE_TYPE == "sqlite":
+        return SQLiteDB(settings.DATABASE_URL)
+    elif settings.DATABASE_TYPE == "supabase":
+        return SupabaseDB(settings.DATABASE_URL)
+    else:
+        raise ValueError(f"Unsupported database type: {settings.DATABASE_TYPE}")
+
+db = get_db_instance()
+model = Model(db)
+
+DEFAULT_PROMPTS = {
+    "summarize_image_prompt": """
+        You will be provided with an image. Your task is to analyze the image and provide a structured JSON output with the following fields:
+        - "summary": Describe this image in the most concise way possible, capturing only the essential elements and details. Aim for a very brief yet accurate summary.
+        - "topic": The main topic of the image (e.g., "nature", "city", "people", "animals", "food", etc.).
+        - "tags": A list of relevant keywords or tags for the image.
+
+        It is very important that you only provide the final JSON output without any additional comments or remarks.
+        The output should be a single JSON object.
+        """.strip(),
+    "summarize_document_prompt": """
+        You will be provided with the contents of a file. Your task is to analyze the content and provide a structured JSON output with the following fields:
+        - "summary": A concise but informative summary of the file's content. The purpose of the summary is to organize files, so make it as specific as possible.
+        - "topic": The main topic of the file. Choose from a predefined list of topics if available, otherwise use a short, descriptive topic.
+        - "tags": A list of relevant keywords or tags for the file.
+
+        It is very important that you only provide the final JSON output without any additional comments or remarks.
+        The output should be a single JSON object.
+        """.strip(),
+    "create_file_tree_prompt": """
+        You will be provided with list of source files and a summary of their contents.
+        For each file,propose a new path and filename, using a directory structure that optimally organizes the files using known conventions and best practices.
+        Follow good naming conventions. Here are a few guidelines
+        - Think about your files : What related files are you working with?
+        - Identify metadata (for example, date, sample, experiment) : What information is needed to easily locate a specific file?
+        - Abbreviate or encode metadata
+        - Use versioning : Are you maintaining different versions of the same file?
+        - Think about how you will search for your files : What comes first?
+        - Deliberately separate metadata elements : Avoid spaces or special characters in your file names
+        If the file is already named well or matches a known convention, set the destination path to the same as the source path.
+
+        Your response must be a JSON object with the following schema, dont add any extra text except the json:
+        ```json
+        {
+            "files": [
+                {
+                    "src_path": "original file path",
+                    "dst_path": "new file path under proposed directory structure with proposed file name"
+                }
+            ]
+        }
+        ```
+        """.strip(),
+    "search_files_prompt": """
+        You will be provided with list of source files and a summary of their contents:
+        return the files that matches or have a similar content to this search query: {search_query}
+
+        Your response must be a JSON object with the following schema, dont add any extra text except the json:
+        ```json
+        {
+        "files": [
+                {
+                    "file": "File that matches or have a similar content to the search query"
+                }
+            ]
+        }
+        """.strip()
+}
+
+db.initialize_prompts(DEFAULT_PROMPTS)
 
 
 async def summarize_document(doc: Document):
     logger.info(f"Processing file {doc.metadata['file_path']}")
     doc_hash = get_file_hash(doc.metadata['file_path'])
     if db.is_file_exist(doc.metadata['file_path'], doc_hash):
-        summary = db.get_file_summary(doc.metadata['file_path'])
+        summary_data = db.get_file_summary(doc.metadata['file_path'])
     else:
-        summary = await model.summarize_document_api(doc.text)
-        db.insert_file_summary(doc.metadata['file_path'], doc_hash, summary)
+        summary_json = await model.summarize_document_api(doc.text)
+        try:
+            summary_data = json.loads(summary_json)
+        except json.JSONDecodeError:
+            summary_data = {"summary": summary_json, "topic": "unknown", "tags": "[]"}
+
+        db.insert_file_summary(doc.metadata['file_path'], doc_hash, summary_data['summary'], summary_data['topic'], json.dumps(summary_data['tags']))
+
     return {
         "file_path": doc.metadata['file_path'],
-        "summary": summary
+        "summary": summary_data['summary'],
+        "topic": summary_data.get('topic'),
+        "tags": summary_data.get('tags')
     }
 
 
@@ -40,13 +120,21 @@ async def summarize_image_document(doc: ImageDocument):
     logger.info(f"Processing image {doc.image_path}")
     image_hash = get_file_hash(doc.image_path)
     if db.is_file_exist(doc.image_path, image_hash):
-        summary = db.get_file_summary(doc.image_path)
+        summary_data = db.get_file_summary(doc.image_path)
     else:
-        summary = await model.summarize_image_api(image_path=doc.image_path)
-        db.insert_file_summary(doc.image_path, image_hash, summary)
+        summary_json = await model.summarize_image_api(image_path=doc.image_path)
+        try:
+            summary_data = json.loads(summary_json)
+        except json.JSONDecodeError:
+            summary_data = {"summary": summary_json, "topic": "unknown", "tags": "[]"}
+
+        db.insert_file_summary(doc.image_path, image_hash, summary_data['summary'], summary_data['topic'], json.dumps(summary_data['tags']))
+
     return {
         "file_path": doc.image_path,
-        "summary": summary
+        "summary": summary_data['summary'],
+        "topic": summary_data.get('topic'),
+        "tags": summary_data.get('tags')
     }
 
 

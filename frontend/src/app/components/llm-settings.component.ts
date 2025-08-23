@@ -19,6 +19,11 @@ interface LLMConfig {
   image_api_keys: string[];
 }
 
+interface Prompt {
+  prompt_name: string;
+  prompt_text: string;
+}
+
 @Component({
   selector: 'app-llm-settings',
   template: `
@@ -95,6 +100,15 @@ interface LLMConfig {
       <div *ngIf="message" class="message" [class.success]="isSuccess" [class.error]="!isSuccess">
         {{message}}
       </div>
+
+      <div class="prompts-section">
+        <h3>Prompts</h3>
+        <div *ngFor="let prompt of prompts" class="prompt-editor">
+          <label [for]="prompt.prompt_name">{{ prompt.prompt_name }}</label>
+          <textarea [id]="prompt.prompt_name" [(ngModel)]="prompt.prompt_text" rows="10"></textarea>
+          <button (click)="savePrompt(prompt)">Sauvegarder ce prompt</button>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -151,7 +165,7 @@ interface LLMConfig {
       color: #333;
     }
 
-    select, input {
+    select, input, textarea {
       width: 100%;
       padding: 8px 12px;
       border: 1px solid #ddd;
@@ -159,7 +173,7 @@ interface LLMConfig {
       font-size: 14px;
     }
 
-    select:focus, input:focus {
+    select:focus, input:focus, textarea:focus {
       outline: none;
       border-color: #007bff;
       box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
@@ -220,6 +234,31 @@ interface LLMConfig {
       color: #721c24;
       border: 1px solid #f5c6cb;
     }
+
+    .prompts-section {
+      margin-top: 30px;
+      border-top: 1px solid #eee;
+      padding-top: 20px;
+    }
+
+    .prompt-editor {
+      margin-bottom: 20px;
+    }
+
+    .prompt-editor textarea {
+      height: 150px;
+      resize: vertical;
+    }
+
+    .prompt-editor button {
+      margin-top: 10px;
+      background-color: #28a745;
+      color: white;
+    }
+
+    .prompt-editor button:hover {
+      background-color: #218838;
+    }
   `]
 })
 export class LlmSettingsComponent implements OnInit {
@@ -238,12 +277,14 @@ export class LlmSettingsComponent implements OnInit {
   imageApiKeysInput: string = '';
   message: string = '';
   isSuccess: boolean = false;
+  prompts: Prompt[] = [];
 
   constructor(private dataService: DataService) {}
 
   ngOnInit() {
     this.loadProviders();
     this.loadCurrentConfig();
+    this.loadPrompts();
   }
 
   async loadProviders() {
@@ -330,6 +371,23 @@ export class LlmSettingsComponent implements OnInit {
       this.showMessage('Configuration sauvegardée avec succès!', true);
     } catch (error) {
       this.showMessage('Erreur lors de la sauvegarde de la configuration', false);
+    }
+  }
+
+  async loadPrompts() {
+    try {
+      this.prompts = await this.dataService.getPrompts();
+    } catch (error) {
+      this.showMessage('Erreur lors du chargement des prompts', false);
+    }
+  }
+
+  async savePrompt(prompt: Prompt) {
+    try {
+      await this.dataService.updatePrompt(prompt);
+      this.showMessage('Prompt sauvegardé avec succès!', true);
+    } catch (error) {
+      this.showMessage('Erreur lors de la sauvegarde du prompt', false);
     }
   }
 
