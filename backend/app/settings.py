@@ -23,21 +23,19 @@ class Settings(BaseSettings):
 
 
 class Model:
-    settings = Settings()
-
-    TEXT_API_END_POINT = settings.TEXT_API_END_POINT
-    TEXT_MODEL_NAME = settings.TEXT_MODEL_NAME
-    TEXT_API_KEYS = settings.TEXT_API_KEYS
-    IMAGE_API_END_POINT = settings.IMAGE_API_END_POINT
-    IMAGE_MODEL_NAME = settings.IMAGE_MODEL_NAME
-    IMAGE_API_KEYS = settings.IMAGE_API_KEYS
-    text_keys_count = len(TEXT_API_KEYS)
-    image_keys_count = len(IMAGE_API_KEYS)
-    MAX_TOKEN_SIZE = 4000 # Increase or decrease based on the model context window size
-    cnt_txt = 0
-    cnt_img = 0
-
     def __init__(self):
+        self.settings = Settings()
+        self.TEXT_API_END_POINT = self.settings.TEXT_API_END_POINT
+        self.TEXT_MODEL_NAME = self.settings.TEXT_MODEL_NAME
+        self.TEXT_API_KEYS = self.settings.TEXT_API_KEYS
+        self.IMAGE_API_END_POINT = self.settings.IMAGE_API_END_POINT
+        self.IMAGE_MODEL_NAME = self.settings.IMAGE_MODEL_NAME
+        self.IMAGE_API_KEYS = self.settings.IMAGE_API_KEYS
+        self.text_keys_count = len(self.TEXT_API_KEYS)
+        self.image_keys_count = len(self.IMAGE_API_KEYS)
+        self.MAX_TOKEN_SIZE = 4000  # Increase or decrease based on the model context window size
+        self.cnt_txt = 0
+        self.cnt_img = 0
         self.async_text_clients = [AsyncOpenAI(base_url=self.TEXT_API_END_POINT, api_key=api_key)
                                    for api_key in self.TEXT_API_KEYS]
         self.async_image_clients = [AsyncOpenAI(base_url=self.IMAGE_API_END_POINT, api_key=api_key)
@@ -74,7 +72,7 @@ class Model:
                 try:
                     chat_completion = await self.async_image_clients[
                         self.cnt_img % self.text_keys_count].chat.completions.create(
-                        model=Model.IMAGE_MODEL_NAME,
+                        model=self.IMAGE_MODEL_NAME,
                         messages=[
                             {
                                 "role": "user",
@@ -114,7 +112,7 @@ class Model:
             try:
                 chat_completion = await self.async_text_clients[
                     self.cnt_txt % self.text_keys_count].chat.completions.create(
-                    model=Model.TEXT_MODEL_NAME,
+                    model=self.TEXT_MODEL_NAME,
                     messages=[
                         {"role": "system", "content": prompt},
                         {"role": "user", "content": doc_text},
