@@ -194,56 +194,6 @@ class Model:
                 time.sleep(2)
         return file_tree  # Will return empty list if all attempts fail
 
-    async def search_files_api(self, summaries: list, search_query: str):
-        tmp: list = []
-        files: list = []
-        for summary in summaries:
-            # it's better to use tiktoken here
-            if (sys.getsizeof(json.dumps(tmp)) + sys.getsizeof(json.dumps(summary))) / 4 >= self.MAX_TOKEN_SIZE:
-                files = files + await self.search_files_api_chunk(tmp, search_query)
-                tmp = []
-            else:
-                tmp.append(summary)
-        if len(tmp) > 0:
-            files = files + await self.search_files_api_chunk(tmp, search_query)
-        return files
-
-    async def search_files_api_chunk(self, summaries: list, search_query: str):
-        file_prompt = """
-        You will be provided with list of source files and a summary of their contents:
-        return the files that matches or have a similar content to this search query: """ + search_query + """
-
-        Your response must be a JSON object with the following schema, dont add any extra text except the json:
-        ```json
-        {
-        "files": [
-                {
-                    "file": "File that matches or have a similar content to the search query"
-                }
-            ]
-        }
-        """.strip()
-        while True:
-            try:
-                chat_completion = await self.async_text_clients[
-                    self.cnt_txt % self.text_keys_count].chat.completions.create(
-                    messages=[
-                        {"role": "system", "content": file_prompt},
-                        {"role": "user", "content": json.dumps(summaries)},
-                    ],
-                    model=self.TEXT_MODEL_NAME,
-                    stream=False,
-                    timeout=None,
-                )
-                result = chat_completion.choices[0].message.content
-                files = json.loads(result)["files"]
-                break
-            except Exception as e:
-                logger.error("Error {}".format(e))
-                self.cnt_txt += 1
-                time.sleep(2)
-        return files
-
 
 class CustomFormatter(logging.Formatter):
     grey = "\x1b[38;5;15m"
