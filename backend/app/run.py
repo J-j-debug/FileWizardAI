@@ -18,7 +18,6 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 ch.setFormatter(CustomFormatter())
 logger.addHandler(ch)
-model = Model()
 db = SQLiteDB()
 
 
@@ -28,6 +27,7 @@ async def summarize_document(doc: Document):
     if db.is_file_exist(doc.metadata['file_path'], doc_hash):
         summary = db.get_file_summary(doc.metadata['file_path'])
     else:
+        model = Model()
         summary = await model.summarize_document_api(doc.text)
         db.insert_file_summary(doc.metadata['file_path'], doc_hash, summary)
     return {
@@ -42,6 +42,7 @@ async def summarize_image_document(doc: ImageDocument):
     if db.is_file_exist(doc.image_path, image_hash):
         summary = db.get_file_summary(doc.image_path)
     else:
+        model = Model()
         summary = await model.summarize_image_api(image_path=doc.image_path)
         db.insert_file_summary(doc.image_path, image_hash, summary)
     return {
@@ -111,6 +112,7 @@ async def run(directory_path: str, recursive: bool, required_exts: list):
     logger.info("Starting ...")
 
     summaries = await get_dir_summaries(directory_path, recursive, required_exts)
+    model = Model()
     files = await model.create_file_tree_api(summaries)
 
     # Recursively create dictionary from file paths
@@ -138,6 +140,7 @@ def update_file(root_path, item):
 
 async def search_files(root_path: str, recursive: bool, required_exts: list, search_query: str):
     summaries = await get_dir_summaries(root_path, recursive, required_exts)
+    model = Model()
     files = await model.search_files_api(summaries, search_query)
     return files
 
