@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .run import run, update_file, search_files
+from .run import run, update_file
+from . import rag_utils
 import os
 import subprocess
 import platform
@@ -67,13 +68,26 @@ async def open_file(request: Request):
     return {"message": "Files opened successfully"}
 
 
-@app.get("/search_files")
-async def get_search_files(root_path: str, recursive: bool, required_exts: str, search_query: str):
+@app.get("/rag_search")
+async def rag_search(query: str):
+    chroma_client = rag_utils.get_chroma_client()
+    collection = rag_utils.create_collection(chroma_client)
+    result = await rag_utils.query_rag(query, collection)
+    return result
+
+@app.post("/index_files")
+async def index_files(request: Request):
+    data = await request.json()
+    root_path = data.get('root_path')
+    recursive = data.get('recursive')
+    required_exts = data.get('required_exts')
+
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
+
     required_exts = required_exts.split(';')
-    files = await search_files(root_path, recursive, required_exts, search_query)
-    return files
+    await rag_utils.index_files_from_path(root_path, recursive, required_exts)
+    return {"message": "Files indexed successfully"}
 
 
 @app.get("/llm_providers")

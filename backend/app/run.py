@@ -10,6 +10,7 @@ import hashlib
 from .database import SQLiteDB
 from .settings import CustomFormatter
 from .settings import Model
+from . import rag_utils
 import shutil
 
 logger = logging.getLogger()
@@ -98,6 +99,7 @@ def load_documents(path: str, recursive: bool, required_exts: list):
 
 async def get_dir_summaries(path: str, recursive: bool, required_exts: list):
     doc_dicts = load_documents(path, recursive, required_exts)
+
     await remove_deleted_files()
     files_summaries = await get_summaries(doc_dicts)
 
@@ -136,13 +138,6 @@ def update_file(root_path, item):
         shutil.move(src_file, dst_file)
         new_hash = get_file_hash(dst_file)
         db.update_file(src_file, dst_file, new_hash)
-
-
-async def search_files(root_path: str, recursive: bool, required_exts: list, search_query: str):
-    summaries = await get_dir_summaries(root_path, recursive, required_exts)
-    model = Model()
-    files = await model.search_files_api(summaries, search_query)
-    return files
 
 
 def get_file_hash(file_path):
