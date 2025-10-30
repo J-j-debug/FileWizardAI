@@ -19,7 +19,7 @@ import { DataService } from "../data.service";
 
       <h4>Sources:</h4>
       <ul>
-        <li *ngFor="let source of ragResult.sources">{{ source }}</li>
+        <li *ngFor="let source of ragResult.sources">{{ source.file_path }} (Page: {{ source.page }})</li>
       </ul>
     </div>
   `,

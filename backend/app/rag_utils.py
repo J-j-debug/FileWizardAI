@@ -24,11 +24,16 @@ def create_collection(client, name="file_embeddings"):
 def index_documents(documents: list[Document], collection):
     """Indexes a list of documents into a ChromaDB collection."""
     for doc in documents:
-        file_path = doc.metadata["file_path"]
+        # The document object from llama-index now represents a single page
+        file_path = doc.metadata.get("file_path", "Unknown")
+        page_number = doc.metadata.get("page_label", "Unknown")
+
+        # Create a document object for the whole page to be split into chunks
+        page_doc = Document(text=doc.get_content(), metadata={"file_path": file_path, "page": page_number})
 
         # Split document into smaller chunks
         splitter = SentenceSplitter(chunk_size=512, chunk_overlap=20)
-        nodes = splitter.get_nodes_from_documents([doc])
+        nodes = splitter.get_nodes_from_documents([page_doc])
 
         # Create embeddings for each chunk
         for node in nodes:
@@ -39,8 +44,8 @@ def index_documents(documents: list[Document], collection):
             collection.add(
                 embeddings=[embedding],
                 documents=[node.get_content()],
-                metadatas=[{"file_path": file_path}],
-                ids=[f"{file_path}_{node.node_id}"]
+                metadatas=[{"file_path": file_path, "page": page_number}],
+                ids=[f"{file_path}_page{page_number}_{node.node_id}"]
             )
 
 async def index_files_from_path(root_path: str, recursive: bool, required_exts: list):
@@ -89,10 +94,11 @@ async def query_rag(query: str, collection):
 
     # Use the existing Model class to call the LLM
     llm = Model()
-    response = await llm.summarize_document_api(prompt)
+    context_str = "\n".join([doc for doc in results['documents'][0]])
+    response = await llm.generate_rag_response_api(context_str, query)
 
     # Return the response and the sources
     return {
         "response": response,
-        "sources": [metadata['file_path'] for metadata in results['metadatas'][0]]
+        "sources": results['metadatas'][0]
     }
