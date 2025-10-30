@@ -25,27 +25,23 @@ def index_documents(documents: list[Document], collection):
     """Indexes a list of documents into a ChromaDB collection."""
     for doc in documents:
         file_path = doc.metadata["file_path"]
-        file_hash = get_file_hash(file_path)
 
-        if not db.is_file_exist(file_path, file_hash):
-            # Split document into smaller chunks
-            splitter = SentenceSplitter(chunk_size=512, chunk_overlap=20)
-            nodes = splitter.get_nodes_from_documents([doc])
+        # Split document into smaller chunks
+        splitter = SentenceSplitter(chunk_size=512, chunk_overlap=20)
+        nodes = splitter.get_nodes_from_documents([doc])
 
-            # Create embeddings for each chunk
-            for node in nodes:
-                embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
+        # Create embeddings for each chunk
+        for node in nodes:
+            embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
 
-                # Store the chunk and its embedding in ChromaDB
-                collection.add(
-                    embeddings=[embedding],
-                    documents=[node.get_content()],
-                    metadatas=[{"file_path": file_path}],
-                    ids=[f"{file_path}_{node.node_id}"]
-                )
-
-            # We don't have a summary, so we store an empty string
-            db.insert_file_summary(file_path, file_hash, "")
+            # Store the chunk and its embedding in ChromaDB
+            # ChromaDB handles upserts automatically, so we don't need to check for existence
+            collection.add(
+                embeddings=[embedding],
+                documents=[node.get_content()],
+                metadatas=[{"file_path": file_path}],
+                ids=[f"{file_path}_{node.node_id}"]
+            )
 
 async def index_files_from_path(root_path: str, recursive: bool, required_exts: list):
     """Loads documents from a path and indexes them into ChromaDB."""
