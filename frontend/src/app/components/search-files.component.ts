@@ -7,13 +7,21 @@ import { DataService } from "../data.service";
   template: `
     <mat-form-field class="example-full-width">
       <mat-label>Search text</mat-label>
-      <textarea matInput placeholder="Search text" [(ngModel)]="searchQuery"></textarea>
+      <textarea matInput placeholder="Ask a question about your documents" [(ngModel)]="searchQuery"></textarea>
     </mat-form-field>
     <button mat-raised-button (click)="searchFiles()" style="margin-left: 1%">Search</button>
-    <div class="spinner-container">
-        <mat-spinner *ngIf="isLoading"></mat-spinner>
+    <div class="spinner-container" *ngIf="isLoading">
+        <mat-spinner></mat-spinner>
     </div>
-    <app-folder-tree title="Searched files" *ngIf="files" [paths]="files" [rootPath]="rootPath" [index]=2></app-folder-tree>
+    <div *ngIf="ragResult" class="results-container">
+      <h3>Response:</h3>
+      <p>{{ ragResult.response }}</p>
+
+      <h4>Sources:</h4>
+      <ul>
+        <li *ngFor="let source of ragResult.sources">{{ source }}</li>
+      </ul>
+    </div>
   `,
   styles: [`
     .example-full-width {
@@ -23,13 +31,16 @@ import { DataService } from "../data.service";
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100%; /* or a specific height if needed */
+      margin-top: 20px;
+    }
+    .results-container {
+      margin-top: 20px;
     }
   `]
 })
 export class SearchFilesComponent {
   searchQuery: string = "";
-  files: any;
+  ragResult: any;
   isLoading: boolean = false;
   @Input() rootPath: string = "";
   @Input() isRecursive: boolean = false;
@@ -39,18 +50,14 @@ export class SearchFilesComponent {
   }
 
   searchFiles(): void {
-    this.files = null;
+    this.ragResult = null;
     this.isLoading = true;
     let params = new HttpParams();
-    params = params.set("root_path", this.rootPath)
-    params = params.set("recursive", this.isRecursive)
-    params = params.set("required_exts", this.filesExts.join(';'))
-    params = params.set("search_query", this.searchQuery)
+    params = params.set("query", this.searchQuery);
     this.dataService
-      .getSearchFiles(params)
+      .ragSearch(params)
       .subscribe((data: any) => {
-        if (!this.rootPath.endsWith('/')) this.rootPath += '/';
-        this.files = data.map((item: any) => this.rootPath + item.file);
+        this.ragResult = data;
         this.isLoading = false;
       })
   }

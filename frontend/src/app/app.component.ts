@@ -122,6 +122,10 @@ interface ExtensionGroup {
               <mat-icon>search</mat-icon>
               GET FILES
             </button>
+            <button mat-flat-button color="accent" (click)="indexFiles()" class="get-files-btn">
+              <mat-icon>api</mat-icon>
+              INDEX FILES
+            </button>
           </div>
         </div>
 
@@ -1045,6 +1049,26 @@ export class AppComponent {
       this.dstPaths = res.map((r: any) => r.dst_path);
       this.isLoading = false;
     })
+  }
+
+  indexFiles(): void {
+    this.successMessage = '';
+    this.errorMessage = '';
+    this.isLoading = true;
+    const payload = {
+      root_path: this.rootPath,
+      recursive: this.isRecursive,
+      required_exts: this.filesExts.join(';')
+    };
+    this.dataService.indexFiles(payload).subscribe(data => {
+      this.successMessage = 'Files indexed successfully.';
+      this.isLoading = false;
+    },
+      (error) => {
+        console.error(error);
+        this.errorMessage = 'An error occurred while indexing data.';
+        this.isLoading = false;
+      });
   }
 
   updateStructure(): void {

@@ -21,8 +21,8 @@ export class DataService {
     return this.http.post<any>(this.apiUrl + "/update_files", newStructureBody);
   }
 
-  getSearchFiles(params: HttpParams) {
-    return this.http.get(this.apiUrl + "/search_files", { params: params });
+  ragSearch(params: HttpParams): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/rag_search`, { params });
   }
 
   openFile(fileToOpen: any): Observable<any> {
@@ -39,5 +39,9 @@ export class DataService {
 
   updateLLMConfig(configData: any): Promise<any> {
     return this.http.post<any>(this.apiUrl + "/llm_config", configData).toPromise();
+  }
+
+  indexFiles(data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/index_files`, data);
   }
 }
