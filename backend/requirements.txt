@@ -12,3 +12,4 @@ openpyxl  # for Excel file support
 chromadb
 sentence-transformers
 llama-index
+pypdf

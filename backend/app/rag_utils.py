@@ -5,6 +5,9 @@ from sentence_transformers import SentenceTransformer
 from .settings import Model
 from .database import SQLiteDB
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Cache the model so it's loaded only once
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -50,9 +53,12 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
         input_dir=root_path,
         recursive=recursive,
         required_exts=required_exts,
-        errors='ignore'
+        # Use 'warn' to see potential issues instead of ignoring them
+        errors='warn'
     )
+
     documents = reader.load_data()
+    logger.info(f"Loaded {len(documents)} document(s) from the specified path.")
 
     chroma_client = get_chroma_client()
     collection = create_collection(chroma_client)
