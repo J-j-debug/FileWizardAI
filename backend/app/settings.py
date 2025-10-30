@@ -131,13 +131,18 @@ class Model:
 
     async def generate_rag_response_api(self, doc_text: str, query: str):
         prompt = f"""
-        You are an assistant for question-answering tasks.
-        Use the following pieces of retrieved context to answer the question.
-        If you don't know the answer, just say that you don't know.
-        Use three sentences maximum and keep the answer concise.
-        Question: {query}
-        Context: {doc_text}
-        Answer:
+        You are a search assistant. Your task is to find and extract the most relevant passages from the provided text to answer the user's query.
+        Do not synthesize or generate new answers. Your response should consist only of direct quotes from the text.
+        Present the results in a "Citations" section, listing each relevant quote.
+
+        **Query:** {query}
+
+        **Context:**
+        ---
+        {doc_text}
+        ---
+
+        **Citations:**
         """.strip()
         attempt = 0
         summary = ""
