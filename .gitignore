@@ -23,3 +23,8 @@ backend/**/*.db
 
 # Environment files
 .env
+
+# Local data and logs
+FileWizardAi.db
+chroma_db/
+pip_install.log

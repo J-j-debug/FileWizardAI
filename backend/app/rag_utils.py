@@ -28,25 +28,31 @@ def index_documents(documents: list[Document], collection):
         file_path = doc.metadata.get("file_path", "Unknown")
         page_number = doc.metadata.get("page_label", "Unknown")
 
-        # Create a document object for the whole page to be split into chunks
-        page_doc = Document(text=doc.get_content(), metadata={"file_path": file_path, "page": page_number})
+        # Pre-split the document by paragraphs
+        paragraphs = doc.get_content().split('\n\n')
 
-        # Split document into smaller chunks
-        splitter = SentenceSplitter(chunk_size=512, chunk_overlap=20)
-        nodes = splitter.get_nodes_from_documents([page_doc])
+        splitter = SentenceSplitter(chunk_size=512, chunk_overlap=50)
 
-        # Create embeddings for each chunk
-        for node in nodes:
-            embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
+        # Process each paragraph
+        for paragraph in paragraphs:
+            if not paragraph.strip():
+                continue
 
-            # Store the chunk and its embedding in ChromaDB
-            # ChromaDB handles upserts automatically, so we don't need to check for existence
-            collection.add(
-                embeddings=[embedding],
-                documents=[node.get_content()],
-                metadatas=[{"file_path": file_path, "page": page_number}],
-                ids=[f"{file_path}_page{page_number}_{node.node_id}"]
-            )
+            # Create a Document for the paragraph and let the splitter handle it.
+            # If the paragraph is smaller than chunk_size, it's treated as one node.
+            # If it's larger, it's intelligently split into sentences.
+            paragraph_doc = Document(text=paragraph, metadata=doc.metadata)
+            nodes = splitter.get_nodes_from_documents([paragraph_doc])
+
+            # Index each resulting node
+            for node in nodes:
+                embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
+                collection.add(
+                    embeddings=[embedding],
+                    documents=[node.get_content()],
+                    metadatas=[{"file_path": file_path, "page": page_number}],
+                    ids=[f"{file_path}_page{page_number}_{node.node_id}"]
+                )
 
 async def index_files_from_path(root_path: str, recursive: bool, required_exts: list):
     """Loads documents from a path and indexes them into ChromaDB."""
