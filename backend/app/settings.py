@@ -129,6 +129,40 @@ class Model:
                 self.cnt_txt += 1
         return summary
 
+    async def generate_rag_response_api(self, doc_text: str, query: str):
+        prompt = f"""
+        You are an assistant for question-answering tasks.
+        Use the following pieces of retrieved context to answer the question.
+        If you don't know the answer, just say that you don't know.
+        Use three sentences maximum and keep the answer concise.
+        Question: {query}
+        Context: {doc_text}
+        Answer:
+        """.strip()
+        attempt = 0
+        summary = ""
+        # To avoid rate_limit_exceeded or api error
+        while attempt < 5:
+            try:
+                chat_completion = await self.async_text_clients[
+                    self.cnt_txt % self.text_keys_count].chat.completions.create(
+                    model=self.TEXT_MODEL_NAME,
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    stream=False,
+                    temperature=0,
+                    timeout=None,
+                )
+                summary = chat_completion.choices[0].message.content
+                break
+            except Exception as e:
+                logger.error("Error {}".format(e))
+                attempt += 1
+                self.cnt_txt += 1
+        return summary
+
     async def create_file_tree_api(self, summaries: list):
         tmp: list = []
         file_tree: list = []

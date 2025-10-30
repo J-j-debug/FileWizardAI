@@ -89,7 +89,8 @@ async def query_rag(query: str, collection):
 
     # Use the existing Model class to call the LLM
     llm = Model()
-    response = await llm.summarize_document_api(prompt)
+    context_str = "\n".join([doc for doc in results['documents'][0]])
+    response = await llm.generate_rag_response_api(context_str, query)
 
     # Return the response and the sources
     return {
