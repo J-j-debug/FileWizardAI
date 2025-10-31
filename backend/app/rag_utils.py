@@ -2,6 +2,8 @@ import chromadb
 from llama_index.core import Document, SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter
 from sentence_transformers import SentenceTransformer
+from llama_index.readers.docling import DoclingReader
+from llama_index.node_parser.docling import DoclingNodeParser
 from .settings import Model
 from .database import SQLiteDB
 import asyncio
@@ -21,48 +23,61 @@ def create_collection(client, name="file_embeddings"):
     """Creates a new collection or gets an existing one."""
     return client.get_or_create_collection(name=name)
 
-def index_documents(documents: list[Document], collection):
-    """Indexes a list of documents into a ChromaDB collection."""
-    for doc in documents:
-        # The document object from llama-index now represents a single page
-        file_path = doc.metadata.get("file_path", "Unknown")
-        page_number = doc.metadata.get("page_label", "Unknown")
+def index_documents_standard(documents: list[Document], collection):
+    """The standard indexing method with our robust hybrid paragraph/sentence splitter."""
+    # This parser first splits by paragraphs, and then by sentences if a paragraph is too long.
+    node_parser = SentenceSplitter(chunk_size=512, chunk_overlap=50)
+    nodes = node_parser.get_nodes_from_documents(documents)
 
-        # Pre-split the document by paragraphs
-        paragraphs = doc.get_content().split('\n\n')
+    for node in nodes:
+        file_path = node.metadata.get("file_path", "Unknown")
+        page_number = node.metadata.get("page_label", "Unknown")
+        embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
+        collection.add(
+            embeddings=[embedding],
+            documents=[node.get_content()],
+            metadatas=[{"file_path": file_path, "page": page_number}],
+            ids=[f"{file_path}_page{page_number}_{node.node_id}"]
+        )
 
-        splitter = SentenceSplitter(chunk_size=512, chunk_overlap=50)
+def index_documents_docling(documents: list[Document], collection):
+    """The advanced indexing method using DoclingNodeParser."""
+    node_parser = DoclingNodeParser()
+    nodes = node_parser.get_nodes_from_documents(documents)
+    for node in nodes:
+        file_path = node.metadata.get("file_path", "Unknown")
+        page_number = node.metadata.get("page_label", "Unknown")
+        embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
+        collection.add(
+            embeddings=[embedding],
+            documents=[node.get_content()],
+            metadatas=[{"file_path": file_path, "page": page_number, **node.metadata}],
+            ids=[f"{file_path}_page{page_number}_{node.node_id}"]
+        )
 
-        # Process each paragraph
-        for paragraph in paragraphs:
-            if not paragraph.strip():
-                continue
 
-            # Create a Document for the paragraph and let the splitter handle it.
-            # If the paragraph is smaller than chunk_size, it's treated as one node.
-            # If it's larger, it's intelligently split into sentences.
-            paragraph_doc = Document(text=paragraph, metadata=doc.metadata)
-            nodes = splitter.get_nodes_from_documents([paragraph_doc])
-
-            # Index each resulting node
-            for node in nodes:
-                embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
-                collection.add(
-                    embeddings=[embedding],
-                    documents=[node.get_content()],
-                    metadatas=[{"file_path": file_path, "page": page_number}],
-                    ids=[f"{file_path}_page{page_number}_{node.node_id}"]
-                )
-
-async def index_files_from_path(root_path: str, recursive: bool, required_exts: list):
+async def index_files_from_path(root_path: str, recursive: bool, required_exts: list, use_docling: bool = False):
     """Loads documents from a path and indexes them into ChromaDB."""
-    reader = SimpleDirectoryReader(
-        input_dir=root_path,
-        recursive=recursive,
-        required_exts=required_exts,
-        # Use 'warn' to see potential issues instead of ignoring them
-        errors='warn'
-    )
+
+    reader = None
+    if use_docling:
+        logger.info("Using advanced indexing with Docling.")
+        docling_reader = DoclingReader(export_type=DoclingReader.ExportType.JSON)
+        reader = SimpleDirectoryReader(
+            input_dir=root_path,
+            recursive=recursive,
+            required_exts=required_exts,
+            file_extractor={".pdf": docling_reader},
+            errors='warn'
+        )
+    else:
+        logger.info("Using standard indexing.")
+        reader = SimpleDirectoryReader(
+            input_dir=root_path,
+            recursive=recursive,
+            required_exts=required_exts,
+            errors='warn'
+        )
 
     documents = reader.load_data()
     logger.info(f"Loaded {len(documents)} document(s) from the specified path.")
@@ -70,7 +85,10 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
     chroma_client = get_chroma_client()
     collection = create_collection(chroma_client)
 
-    index_documents(documents, collection)
+    if use_docling:
+        index_documents_docling(documents, collection)
+    else:
+        index_documents_standard(documents, collection)
 
 def get_file_hash(file_path):
     """Computes the SHA256 hash of a file."""

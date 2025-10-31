@@ -122,10 +122,15 @@ interface ExtensionGroup {
               <mat-icon>search</mat-icon>
               GET FILES
             </button>
-            <button mat-flat-button color="accent" (click)="indexFiles()" class="get-files-btn">
-              <mat-icon>api</mat-icon>
-              INDEX FILES
-            </button>
+            <div class="index-action-group">
+              <mat-checkbox [(ngModel)]="useDocling" color="accent" class="subdirectories-check">
+                Advanced Indexing (Docling)
+              </mat-checkbox>
+              <button mat-flat-button color="accent" (click)="indexFiles()" class="get-files-btn">
+                <mat-icon>api</mat-icon>
+                INDEX FILES
+              </button>
+            </div>
           </div>
         </div>
 
@@ -984,6 +989,7 @@ export class AppComponent {
   filesExts: string[] = [];
   isDarkTheme = false;
   showLLMSettings = false;
+  useDocling: boolean = false; // New property for advanced indexing
 
   constructor(private dataService: DataService) {
     // Check for saved theme preference
@@ -1058,7 +1064,8 @@ export class AppComponent {
     const payload = {
       root_path: this.rootPath,
       recursive: this.isRecursive,
-      required_exts: this.filesExts.join(';')
+      required_exts: this.filesExts.join(';'),
+      use_docling: this.useDocling // Add the new parameter to the payload
     };
     this.dataService.indexFiles(payload).subscribe(data => {
       this.successMessage = 'Files indexed successfully.';

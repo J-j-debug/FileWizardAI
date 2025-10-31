@@ -28,3 +28,5 @@ backend/**/*.db
 FileWizardAi.db
 chroma_db/
 pip_install.log
+backend.log
+frontend.log

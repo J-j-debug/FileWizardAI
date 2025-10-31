@@ -81,12 +81,13 @@ async def index_files(request: Request):
     root_path = data.get('root_path')
     recursive = data.get('recursive')
     required_exts = data.get('required_exts')
+    use_docling = data.get('use_docling', False)  # Get the new parameter
 
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
 
     required_exts = required_exts.split(';')
-    await rag_utils.index_files_from_path(root_path, recursive, required_exts)
+    await rag_utils.index_files_from_path(root_path, recursive, required_exts, use_docling)
     return {"message": "Files indexed successfully"}
 
 

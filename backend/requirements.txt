@@ -13,3 +13,5 @@ chromadb
 sentence-transformers
 llama-index
 pypdf
+llama-index-readers-docling
+llama-index-node-parser-docling
