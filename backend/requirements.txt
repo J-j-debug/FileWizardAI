@@ -2,7 +2,14 @@ fastapi
 uvicorn[standard]==0.22.0
 openai
 pydantic-settings
-llama-index
+
+# --- Docling stack (compatible avec LlamaIndex 0.14.x)
+deepsearch-glm==0.22.3
+docling==1.19.1
+llama-index-readers-docling==0.2.0
+llama-index-node-parser-docling==0.2.0
+
+llama-index==0.14.6
 # needed by llama index
 git+https://github.com/openai/whisper.git # heavy library, remove if you don't want to treat media files
 pydub
@@ -11,7 +18,4 @@ nbconvert
 openpyxl  # for Excel file support
 chromadb
 sentence-transformers
-llama-index
 pypdf
-llama-index-readers-docling
-llama-index-node-parser-docling

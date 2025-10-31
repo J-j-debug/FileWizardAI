@@ -25,20 +25,23 @@ def create_collection(client, name="file_embeddings"):
 
 def index_documents_standard(documents: list[Document], collection):
     """The standard indexing method with our robust hybrid paragraph/sentence splitter."""
-    # This parser first splits by paragraphs, and then by sentences if a paragraph is too long.
-    node_parser = SentenceSplitter(chunk_size=512, chunk_overlap=50)
-    nodes = node_parser.get_nodes_from_documents(documents)
-
-    for node in nodes:
-        file_path = node.metadata.get("file_path", "Unknown")
-        page_number = node.metadata.get("page_label", "Unknown")
-        embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
-        collection.add(
-            embeddings=[embedding],
-            documents=[node.get_content()],
-            metadatas=[{"file_path": file_path, "page": page_number}],
-            ids=[f"{file_path}_page{page_number}_{node.node_id}"]
-        )
+    splitter = SentenceSplitter(chunk_size=512, chunk_overlap=50)
+    for doc in documents:
+        paragraphs = doc.get_content().split('\n\n')
+        for paragraph in paragraphs:
+            if paragraph.strip():
+                paragraph_doc = Document(text=paragraph, metadata=doc.metadata)
+                nodes = splitter.get_nodes_from_documents([paragraph_doc])
+                for node in nodes:
+                    file_path = node.metadata.get("file_path", "Unknown")
+                    page_number = node.metadata.get("page_label", "Unknown")
+                    embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
+                    collection.add(
+                        embeddings=[embedding],
+                        documents=[node.get_content()],
+                        metadatas=[{"file_path": file_path, "page": page_number}],
+                        ids=[f"{file_path}_page{page_number}_{node.node_id}"]
+                    )
 
 def index_documents_docling(documents: list[Document], collection):
     """The advanced indexing method using DoclingNodeParser."""
