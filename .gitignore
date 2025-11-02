@@ -19,7 +19,6 @@ backend/venv/
 venv/
 backend/env/
 **/__pycache__/
-backend/**/*.db
 
 # Environment files
 .env
@@ -27,6 +26,4 @@ backend/**/*.db
 # Local data and logs
 FileWizardAi.db
 chroma_db/
-pip_install.log
-backend.log
-frontend.log
+*.log
