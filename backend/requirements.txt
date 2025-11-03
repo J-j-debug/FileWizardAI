@@ -2,14 +2,18 @@ fastapi
 uvicorn[standard]==0.22.0
 openai
 pydantic-settings
-llama-index
-# needed by llama index
-git+https://github.com/openai/whisper.git # heavy library, remove if you don't want to treat media files
+
+# --- LlamaIndex & Unstructured stack (compatible with Python 3.12+)
+unstructured[pdf,docx]
+llama-index==0.10.50
+llama-index-readers-file
+
+# --- Other dependencies
+git+https://github.com/openai/whisper.git
 pydub
 docx2txt
 nbconvert
-openpyxl  # for Excel file support
+openpyxl
 chromadb
 sentence-transformers
-llama-index
 pypdf

@@ -2,6 +2,7 @@ import chromadb
 from llama_index.core import Document, SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter
 from sentence_transformers import SentenceTransformer
+from llama_index.readers.file import UnstructuredReader
 from .settings import Model
 from .database import SQLiteDB
 import asyncio
@@ -22,47 +23,56 @@ def create_collection(client, name="file_embeddings"):
     return client.get_or_create_collection(name=name)
 
 def index_documents(documents: list[Document], collection):
-    """Indexes a list of documents into a ChromaDB collection."""
+    """Our robust hybrid paragraph/sentence splitter."""
+    splitter = SentenceSplitter(chunk_size=512, chunk_overlap=50)
     for doc in documents:
-        # The document object from llama-index now represents a single page
-        file_path = doc.metadata.get("file_path", "Unknown")
-        page_number = doc.metadata.get("page_label", "Unknown")
+        paragraphs = doc.get_content().split('\n\n')
+        for paragraph in paragraphs:
+            if paragraph.strip():
+                paragraph_doc = Document(text=paragraph, metadata=doc.metadata)
+                nodes = splitter.get_nodes_from_documents([paragraph_doc])
+                for node in nodes:
+                    file_path = node.metadata.get("file_path", "Unknown")
+                    page_number = node.metadata.get("page_label", "Unknown")
+                    embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
+                    collection.add(
+                        embeddings=[embedding],
+                        documents=[node.get_content()],
+                        metadatas=[{"file_path": file_path, "page": page_number, **node.metadata}],
+                        ids=[f"{file_path}_page{page_number}_{node.node_id}"]
+                    )
 
-        # Create a document object for the whole page to be split into chunks
-        page_doc = Document(text=doc.get_content(), metadata={"file_path": file_path, "page": page_number})
-
-        # Split document into smaller chunks
-        splitter = SentenceSplitter(chunk_size=512, chunk_overlap=20)
-        nodes = splitter.get_nodes_from_documents([page_doc])
-
-        # Create embeddings for each chunk
-        for node in nodes:
-            embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
-
-            # Store the chunk and its embedding in ChromaDB
-            # ChromaDB handles upserts automatically, so we don't need to check for existence
-            collection.add(
-                embeddings=[embedding],
-                documents=[node.get_content()],
-                metadatas=[{"file_path": file_path, "page": page_number}],
-                ids=[f"{file_path}_page{page_number}_{node.node_id}"]
-            )
-
-async def index_files_from_path(root_path: str, recursive: bool, required_exts: list):
+async def index_files_from_path(root_path: str, recursive: bool, required_exts: list, use_advanced_indexing: bool = False):
     """Loads documents from a path and indexes them into ChromaDB."""
-    reader = SimpleDirectoryReader(
-        input_dir=root_path,
-        recursive=recursive,
-        required_exts=required_exts,
-        # Use 'warn' to see potential issues instead of ignoring them
-        errors='warn'
-    )
+
+    reader = None
+    if use_advanced_indexing:
+        logger.info("Using advanced indexing with Unstructured.")
+        unstructured_reader = UnstructuredReader()
+        reader = SimpleDirectoryReader(
+            input_dir=root_path,
+            recursive=recursive,
+            required_exts=required_exts,
+            file_extractor={".pdf": unstructured_reader, ".docx": unstructured_reader},
+            errors='warn'
+        )
+    else:
+        logger.info("Using standard indexing.")
+        reader = SimpleDirectoryReader(
+            input_dir=root_path,
+            recursive=recursive,
+            required_exts=required_exts,
+            errors='warn'
+        )
 
     documents = reader.load_data()
     logger.info(f"Loaded {len(documents)} document(s) from the specified path.")
 
+    collection_name = "file_embeddings_unstructured" if use_advanced_indexing else "file_embeddings"
+    logger.info(f"Using collection: {collection_name}")
+
     chroma_client = get_chroma_client()
-    collection = create_collection(chroma_client)
+    collection = create_collection(chroma_client, name=collection_name)
 
     index_documents(documents, collection)
 
