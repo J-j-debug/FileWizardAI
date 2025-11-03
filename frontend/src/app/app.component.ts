@@ -989,7 +989,7 @@ export class AppComponent {
   filesExts: string[] = [];
   isDarkTheme = false;
   showLLMSettings = false;
-  useAdvancedIndexing: boolean = false; // New property for advanced indexing
+  useAdvancedIndexing: boolean = false;
 
   constructor(private dataService: DataService) {
     // Check for saved theme preference

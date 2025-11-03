@@ -2,7 +2,7 @@ import chromadb
 from llama_index.core import Document, SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter
 from sentence_transformers import SentenceTransformer
-from llama_index.readers.unstructured import UnstructuredReader
+from llama_index.readers.file import UnstructuredReader
 from .settings import Model
 from .database import SQLiteDB
 import asyncio
@@ -48,18 +48,16 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
     reader = None
     if use_advanced_indexing:
         logger.info("Using advanced indexing with Unstructured.")
-        # Use Unstructured for advanced PDF processing
         unstructured_reader = UnstructuredReader()
         reader = SimpleDirectoryReader(
             input_dir=root_path,
             recursive=recursive,
             required_exts=required_exts,
-            file_extractor={".pdf": unstructured_reader},
+            file_extractor={".pdf": unstructured_reader, ".docx": unstructured_reader},
             errors='warn'
         )
     else:
         logger.info("Using standard indexing.")
-        # Standard processing
         reader = SimpleDirectoryReader(
             input_dir=root_path,
             recursive=recursive,

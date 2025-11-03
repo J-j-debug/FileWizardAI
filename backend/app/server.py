@@ -81,7 +81,7 @@ async def index_files(request: Request):
     root_path = data.get('root_path')
     recursive = data.get('recursive')
     required_exts = data.get('required_exts')
-    use_advanced_indexing = data.get('use_advanced_indexing', False)  # Use a generic parameter name
+    use_advanced_indexing = data.get('use_advanced_indexing', False)
 
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
