@@ -69,9 +69,9 @@ async def open_file(request: Request):
 
 
 @app.get("/rag_search")
-async def rag_search(query: str):
+async def rag_search(query: str, collection_name: str = "file_embeddings"):
     chroma_client = rag_utils.get_chroma_client()
-    collection = rag_utils.create_collection(chroma_client)
+    collection = rag_utils.create_collection(chroma_client, name=collection_name)
     result = await rag_utils.query_rag(query, collection)
     return result
 
