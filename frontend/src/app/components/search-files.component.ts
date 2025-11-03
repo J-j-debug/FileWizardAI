@@ -5,11 +5,21 @@ import { DataService } from "../data.service";
 @Component({
   selector: 'app-search-files',
   template: `
-    <mat-form-field class="example-full-width">
-      <mat-label>Search text</mat-label>
-      <textarea matInput placeholder="Ask a question about your documents" [(ngModel)]="searchQuery"></textarea>
-    </mat-form-field>
-    <button mat-raised-button (click)="searchFiles()" style="margin-left: 1%">Search</button>
+    <div class="search-controls">
+      <mat-form-field class="search-input">
+        <mat-label>Search text</mat-label>
+        <textarea matInput placeholder="Ask a question about your documents" [(ngModel)]="searchQuery"></textarea>
+      </mat-form-field>
+      <mat-form-field class="collection-select">
+        <mat-label>Search In</mat-label>
+        <mat-select [(ngModel)]="selectedCollection">
+          <mat-option *ngFor="let collection of collections" [value]="collection.value">
+            {{ collection.viewValue }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-raised-button (click)="searchFiles()" class="search-button">Search</button>
+    </div>
     <div class="spinner-container" *ngIf="isLoading">
         <mat-spinner></mat-spinner>
     </div>
@@ -24,8 +34,17 @@ import { DataService } from "../data.service";
     </div>
   `,
   styles: [`
-    .example-full-width {
+    .search-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
       width: 100%;
+    }
+    .search-input {
+      flex-grow: 1;
+    }
+    .collection-select {
+      width: 250px; /* Adjust as needed */
     }
     .spinner-container {
       display: flex;
@@ -42,6 +61,11 @@ export class SearchFilesComponent {
   searchQuery: string = "";
   ragResult: any;
   isLoading: boolean = false;
+  selectedCollection: string = "file_embeddings"; // Default collection
+  collections = [
+    { value: "file_embeddings", viewValue: "Recherche Standard" },
+    { value: "file_embeddings_unstructured", viewValue: "Recherche Avancée (Unstructured)" }
+  ];
   @Input() rootPath: string = "";
   @Input() isRecursive: boolean = false;
   @Input() filesExts: string[] = [];
@@ -54,6 +78,7 @@ export class SearchFilesComponent {
     this.isLoading = true;
     let params = new HttpParams();
     params = params.set("query", this.searchQuery);
+    params = params.set("collection_name", this.selectedCollection); // Add the selected collection
     this.dataService
       .ragSearch(params)
       .subscribe((data: any) => {
