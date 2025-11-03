@@ -68,8 +68,11 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
     documents = reader.load_data()
     logger.info(f"Loaded {len(documents)} document(s) from the specified path.")
 
+    collection_name = "file_embeddings_unstructured" if use_advanced_indexing else "file_embeddings"
+    logger.info(f"Using collection: {collection_name}")
+
     chroma_client = get_chroma_client()
-    collection = create_collection(chroma_client)
+    collection = create_collection(chroma_client, name=collection_name)
 
     index_documents(documents, collection)
 
