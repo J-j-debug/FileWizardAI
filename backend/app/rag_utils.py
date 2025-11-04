@@ -136,25 +136,55 @@ async def query_rag(query: str, collection):
     # Create an embedding for the user's query
     query_embedding = model.encode(query, convert_to_tensor=False).tolist()
 
-    # Query ChromaDB for the most relevant document chunks
+    # Query ChromaDB for the most relevant document chunks, including distances
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=5  # Return the top 5 most relevant chunks
+        n_results=5,  # Return the top 5 most relevant chunks
+        include=["documents", "metadatas", "distances"]
     )
 
-    # Combine the query and the retrieved chunks into a prompt
-    prompt = f"Question: {query}\n\n"
-    prompt += "Answer the question based on the following context:\n\n"
-    for doc in results['documents'][0]:
-        prompt += f"- {doc}\n"
+    # Unify the results into a single structure to ensure synchronization
+    query_results = results.get('documents', [[]])[0]
+    metadatas = results.get('metadatas', [[]])[0]
+    distances = results.get('distances', [[]])[0]
+
+    # Combine the results into a list of objects
+    combined_results = []
+    for i, doc in enumerate(query_results):
+        combined_results.append({
+            "document": doc,
+            "metadata": metadatas[i],
+            "distance": distances[i]
+        })
+
+    # Step 2: Intelligent Filtering based on distance margin and deduplication
+    if not combined_results:
+        return {"response": "No relevant documents found.", "sources": []}
+
+    best_distance = combined_results[0]["distance"]
+    distance_threshold = best_distance + 0.05
+
+    filtered_results = [res for res in combined_results if res["distance"] <= distance_threshold]
+
+    # Deduplicate results to avoid redundant context for the LLM
+    unique_results = []
+    seen = set()
+    for res in filtered_results:
+        # Create a unique key based on file path and the first 50 chars of content
+        identifier = (res["metadata"]["file_path"], res["document"][:50])
+        if identifier not in seen:
+            unique_results.append(res)
+            seen.add(identifier)
+
+    # Prepare context for the LLM from the clean, filtered results
+    context_str = "\n".join([res["document"] for res in unique_results])
 
     # Use the existing Model class to call the LLM
     llm = Model()
-    context_str = "\n".join([doc for doc in results['documents'][0]])
     response = await llm.generate_rag_response_api(context_str, query)
 
-    # Return the response and the sources
+    # Return the response and the clean, synchronized sources
     return {
         "response": response,
-        "sources": results['metadatas'][0]
+        "sources": [res["metadata"] for res in unique_results]
     }
