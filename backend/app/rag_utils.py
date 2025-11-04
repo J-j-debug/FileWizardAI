@@ -7,6 +7,7 @@ from .settings import Model
 from .database import SQLiteDB
 import asyncio
 import logging
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -22,25 +23,79 @@ def create_collection(client, name="file_embeddings"):
     """Creates a new collection or gets an existing one."""
     return client.get_or_create_collection(name=name)
 
+def generate_node_id(file_path, page_number, content):
+    """Generates a deterministic ID for a node based on its content and source."""
+    # Use the first 256 characters of the content to keep the hash manageable
+    # while still being highly specific.
+    text_snippet = content[:256]
+    hash_object = hashlib.sha256(f"{file_path}-{page_number}-{text_snippet}".encode())
+    return hash_object.hexdigest()
+
+def standardize_metadata(metadata):
+    """Standardizes page number metadata and ensures file_path exists."""
+    page_number = metadata.get("page_number") or metadata.get("page_label", "Unknown")
+    metadata["page_number"] = str(page_number) # Ensure page number is a string
+
+    # Clean up old keys if they exist
+    if "page_label" in metadata:
+        del metadata["page_label"]
+
+    if "file_path" not in metadata:
+        metadata["file_path"] = "Unknown"
+
+    return metadata
+
 def index_documents(documents: list[Document], collection):
-    """Our robust hybrid paragraph/sentence splitter."""
-    splitter = SentenceSplitter(chunk_size=512, chunk_overlap=50)
+    """
+    Processes and indexes documents in batches with standardized metadata and deterministic IDs.
+    """
+    splitter = SentenceSplitter(chunk_size=384, chunk_overlap=40)
+
+    batch_size = 32
+    batch_embeddings = []
+    batch_documents = []
+    batch_metadatas = []
+    batch_ids = []
+
     for doc in documents:
+        doc.metadata = standardize_metadata(doc.metadata)
+
         paragraphs = doc.get_content().split('\n\n')
         for paragraph in paragraphs:
             if paragraph.strip():
                 paragraph_doc = Document(text=paragraph, metadata=doc.metadata)
                 nodes = splitter.get_nodes_from_documents([paragraph_doc])
+
                 for node in nodes:
-                    file_path = node.metadata.get("file_path", "Unknown")
-                    page_number = node.metadata.get("page_label", "Unknown")
-                    embedding = model.encode(node.get_content(), convert_to_tensor=False).tolist()
-                    collection.add(
-                        embeddings=[embedding],
-                        documents=[node.get_content()],
-                        metadatas=[{"file_path": file_path, "page": page_number, **node.metadata}],
-                        ids=[f"{file_path}_page{page_number}_{node.node_id}"]
-                    )
+                    file_path = node.metadata.get("file_path")
+                    page_number = node.metadata.get("page_number")
+                    content = node.get_content()
+
+                    node_id = generate_node_id(file_path, page_number, content)
+
+                    batch_embeddings.append(model.encode(content, convert_to_tensor=False).tolist())
+                    batch_documents.append(content)
+                    batch_metadatas.append(node.metadata)
+                    batch_ids.append(node_id)
+
+                    if len(batch_ids) >= batch_size:
+                        collection.add(
+                            embeddings=batch_embeddings,
+                            documents=batch_documents,
+                            metadatas=batch_metadatas,
+                            ids=batch_ids
+                        )
+                        # Reset batches
+                        batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+
+    # Add any remaining documents in the last batch
+    if batch_ids:
+        collection.add(
+            embeddings=batch_embeddings,
+            documents=batch_documents,
+            metadatas=batch_metadatas,
+            ids=batch_ids
+        )
 
 async def index_files_from_path(root_path: str, recursive: bool, required_exts: list, use_advanced_indexing: bool = False):
     """Loads documents from a path and indexes them into ChromaDB."""
@@ -75,15 +130,6 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
     collection = create_collection(chroma_client, name=collection_name)
 
     index_documents(documents, collection)
-
-def get_file_hash(file_path):
-    """Computes the SHA256 hash of a file."""
-    import hashlib
-    hash_func = hashlib.new('sha256')
-    with open(file_path, 'rb') as f:
-        while chunk := f.read(8192):
-            hash_func.update(chunk)
-    return hash_func.hexdigest()
 
 async def query_rag(query: str, collection):
     """Queries the RAG pipeline to get a response."""

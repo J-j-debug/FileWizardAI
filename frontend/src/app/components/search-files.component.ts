@@ -29,7 +29,12 @@ import { DataService } from "../data.service";
 
       <h4>Sources:</h4>
       <ul>
-        <li *ngFor="let source of ragResult.sources">{{ source.file_path }} (Page: {{ source.page }})</li>
+        <li *ngFor="let source of ragResult.sources">
+          <a [href]="'http://localhost:8000/download?file_path=' + source.file_path" target="_blank">
+            {{ source.file_path }}
+          </a>
+          (Page: {{ source.page_number }})
+        </li>
       </ul>
     </div>
   `,

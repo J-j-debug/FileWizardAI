@@ -68,6 +68,21 @@ async def open_file(request: Request):
     return {"message": "Files opened successfully"}
 
 
+@app.get("/download")
+async def download_file(file_path: str):
+    # Security checks
+    if ".." in file_path or not os.path.isabs(file_path):
+        raise HTTPException(status_code=400, detail="Invalid or relative path specified.")
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail=f"File at path: {file_path} does not exist.")
+
+    if os.path.isdir(file_path):
+        raise HTTPException(status_code=400, detail="Specified path is a directory, not a file.")
+
+    return FileResponse(file_path, media_type='application/octet-stream', filename=os.path.basename(file_path))
+
+
 @app.get("/rag_search")
 async def rag_search(query: str, collection_name: str = "file_embeddings"):
     chroma_client = rag_utils.get_chroma_client()
