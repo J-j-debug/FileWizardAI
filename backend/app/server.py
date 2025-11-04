@@ -78,8 +78,10 @@ async def download_file(encoded_path: str):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid base64 encoding.")
 
-    # Security checks remain crucial
-    if ".." in file_path or not os.path.isabs(file_path):
+    # A more robust security check to prevent directory traversal
+    # This normalizes the path and checks its components
+    normalized_path = os.path.normpath(file_path)
+    if not os.path.isabs(normalized_path) or ".." in normalized_path.split(os.sep):
         raise HTTPException(status_code=400, detail="Invalid or relative path specified.")
 
     if not os.path.exists(file_path):
