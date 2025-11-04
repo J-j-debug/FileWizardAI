@@ -6,6 +6,9 @@ from . import rag_utils
 import os
 import subprocess
 import platform
+import base64
+import mimetypes
+from fastapi import Response
 from fastapi.responses import FileResponse
 
 app = FastAPI()
@@ -69,8 +72,13 @@ async def open_file(request: Request):
 
 
 @app.get("/download")
-async def download_file(file_path: str):
-    # Security checks
+async def download_file(encoded_path: str):
+    try:
+        file_path = base64.b64decode(encoded_path).decode('utf-8')
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 encoding.")
+
+    # Security checks remain crucial
     if ".." in file_path or not os.path.isabs(file_path):
         raise HTTPException(status_code=400, detail="Invalid or relative path specified.")
 
@@ -80,7 +88,15 @@ async def download_file(file_path: str):
     if os.path.isdir(file_path):
         raise HTTPException(status_code=400, detail="Specified path is a directory, not a file.")
 
-    return FileResponse(file_path, media_type='application/octet-stream', filename=os.path.basename(file_path))
+    media_type, _ = mimetypes.guess_type(file_path)
+    if media_type is None:
+        media_type = 'application/octet-stream'
+
+    headers = {
+        'Content-Disposition': f'inline; filename="{os.path.basename(file_path)}"'
+    }
+
+    return FileResponse(file_path, media_type=media_type, headers=headers)
 
 
 @app.get("/rag_search")
