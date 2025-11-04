@@ -131,24 +131,23 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
 
     index_documents(documents, collection)
 
-async def query_rag(query: str, collection):
-    """Queries the RAG pipeline to get a response."""
+async def query_rag(query: str, collection, top_k: int = 5):
+    """Queries the RAG pipeline to get a structured response with a main answer and other relevant passages."""
     # Create an embedding for the user's query
     query_embedding = model.encode(query, convert_to_tensor=False).tolist()
 
-    # Query ChromaDB for the most relevant document chunks, including distances
+    # Query ChromaDB for the most relevant document chunks
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=5,  # Return the top 5 most relevant chunks
+        n_results=top_k,
         include=["documents", "metadatas", "distances"]
     )
 
-    # Unify the results into a single structure to ensure synchronization
+    # Unify and filter results
     query_results = results.get('documents', [[]])[0]
     metadatas = results.get('metadatas', [[]])[0]
     distances = results.get('distances', [[]])[0]
 
-    # Combine the results into a list of objects
     combined_results = []
     for i, doc in enumerate(query_results):
         combined_results.append({
@@ -157,34 +156,41 @@ async def query_rag(query: str, collection):
             "distance": distances[i]
         })
 
-    # Step 2: Intelligent Filtering based on distance margin and deduplication
     if not combined_results:
-        return {"response": "No relevant documents found.", "sources": []}
+        return {
+            "main_response": {"response": "No relevant documents found.", "source": None},
+            "other_relevant_passages": []
+        }
 
+    # Filter by distance margin
     best_distance = combined_results[0]["distance"]
     distance_threshold = best_distance + 0.05
-
     filtered_results = [res for res in combined_results if res["distance"] <= distance_threshold]
 
-    # Deduplicate results to avoid redundant context for the LLM
+    # Deduplicate
     unique_results = []
     seen = set()
     for res in filtered_results:
-        # Create a unique key based on file path and the first 50 chars of content
         identifier = (res["metadata"]["file_path"], res["document"][:50])
         if identifier not in seen:
             unique_results.append(res)
             seen.add(identifier)
 
-    # Prepare context for the LLM from the clean, filtered results
-    context_str = "\n".join([res["document"] for res in unique_results])
+    # Isolate the best result for the main response
+    best_result = unique_results[0]
+    other_relevant_passages = unique_results[1:]
 
-    # Use the existing Model class to call the LLM
+    # Generate the main response using only the best context
     llm = Model()
-    response = await llm.generate_rag_response_api(context_str, query)
+    main_response_text = await llm.generate_rag_response_api(best_result["document"], query)
 
-    # Return the response and the clean, synchronized sources
+    main_response = {
+        "response": main_response_text,
+        "source": best_result["metadata"]
+    }
+
+    # Return the new structured response
     return {
-        "response": response,
-        "sources": [res["metadata"] for res in unique_results]
+        "main_response": main_response,
+        "other_relevant_passages": other_relevant_passages
     }
