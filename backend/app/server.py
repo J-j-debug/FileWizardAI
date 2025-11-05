@@ -105,7 +105,11 @@ async def download_file(encoded_path: str):
 async def rag_search(query: str, collection_name: str = "file_embeddings", top_k: int = 5):
     chroma_client = rag_utils.get_chroma_client()
     collection = rag_utils.create_collection(chroma_client, name=collection_name)
-    result = await rag_utils.query_rag(query, collection, top_k)
+
+    # Enable re-ranking only for the advanced indexing collection
+    use_reranking = collection_name == "file_embeddings_unstructured"
+
+    result = await rag_utils.query_rag(query, collection, top_k, use_reranking=use_reranking)
     return result
 
 @app.post("/index_files")

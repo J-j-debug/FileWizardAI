@@ -4,7 +4,7 @@ openai
 pydantic-settings
 
 # --- LlamaIndex & Unstructured stack (compatible with Python 3.12+)
-unstructured[pdf,docx]
+unstructured[pdf,docx,local-inference]
 llama-index==0.10.50
 llama-index-readers-file
 
