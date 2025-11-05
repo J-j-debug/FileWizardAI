@@ -9,7 +9,7 @@ import asyncio
 import logging
 import hashlib
 import os
-from unstructured.partition.auto import partition_auto
+from unstructured.partition.auto import partition
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +201,7 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
             try:
                 # Use "hi_res" strategy for PDFs for better layout detection
                 strategy = "hi_res" if filename.endswith(".pdf") else "auto"
-                elements = partition_auto(filename=filename, strategy=strategy)
+                elements = partition(filename=filename, strategy=strategy)
                 for element in elements:
                     # Keep the original filename for display
                     element.metadata.filename = os.path.basename(filename)
