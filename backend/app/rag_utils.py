@@ -79,7 +79,7 @@ def index_documents(documents: list[Document], collection):
                     batch_ids.append(node_id)
 
                     if len(batch_ids) >= batch_size:
-                        collection.add(
+                        collection.upsert(
                             embeddings=batch_embeddings,
                             documents=batch_documents,
                             metadatas=batch_metadatas,
@@ -90,7 +90,7 @@ def index_documents(documents: list[Document], collection):
 
     # Add any remaining documents in the last batch
     if batch_ids:
-        collection.add(
+        collection.upsert(
             embeddings=batch_embeddings,
             documents=batch_documents,
             metadatas=batch_metadatas,

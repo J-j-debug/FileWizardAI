@@ -38,8 +38,8 @@ import { DataService } from "../data.service";
         (Page: {{ ragResult.main_response.source.page_number }})
       </div>
 
-      <h4 *ngIf="ragResult.other_relevant_passages && ragResult.other_relevant_passages.length > 0">Autres Passages Pertinents:</h4>
-      <ul>
+      <h4>Autres Passages Pertinents:</h4>
+      <ul *ngIf="ragResult.other_relevant_passages && ragResult.other_relevant_passages.length > 0; else noOtherPassages">
         <li *ngFor="let passage of ragResult.other_relevant_passages">
           <p class="passage-content">"{{ passage.document }}"</p>
           <div class="source-citation">
@@ -51,6 +51,9 @@ import { DataService } from "../data.service";
           </div>
         </li>
       </ul>
+      <ng-template #noOtherPassages>
+        <p>Aucun autre passage pertinent trouvé.</p>
+      </ng-template>
     </div>
   `,
   styles: [`
