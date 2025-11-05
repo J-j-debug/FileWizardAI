@@ -1,19 +1,19 @@
 import chromadb
 from llama_index.core import Document, SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter
-from sentence_transformers import SentenceTransformer
-from unstructured.partition.auto import partition_auto
+from sentence_transformers import SentenceTransformer, CrossEncoder
+from llama_index.readers.file import UnstructuredReader
 from .settings import Model
 from .database import SQLiteDB
 import asyncio
 import logging
 import hashlib
 import os
+from unstructured.partition.auto import partition_auto
 
 logger = logging.getLogger(__name__)
 
 # Cache the model so it's loaded only once
-from sentence_transformers.cross_encoder import CrossEncoder
 model = SentenceTransformer('all-MiniLM-L6-v2')
 cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 db = SQLiteDB()
@@ -102,94 +102,117 @@ def index_documents(documents: list[Document], collection):
             ids=batch_ids
         )
 
-def index_documents_structured(elements, collection):
+def index_documents_unstructured(elements, collection):
     """
-    Processes and indexes document elements with a semantic chunking strategy.
-    Groups titles with their subsequent narrative text.
+    Processes elements from Unstructured partition_auto, groups them into semantic chunks,
+    and indexes them into ChromaDB.
     """
     batch_size = 32
-    batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+    batch_embeddings = []
+    batch_documents = []
+    batch_metadatas = []
+    batch_ids = []
     chunk_index = 0
 
-    # Group elements by file to process them sequentially
-    file_elements = {}
-    for el in elements:
-        file_path = el.metadata.filename
-        if file_path not in file_elements:
-            file_elements[file_path] = []
-        file_elements[file_path].append(el)
+    current_chunk_text = []
+    current_chunk_elements = []
+    current_chunk_text_length = 0
+    # A sensible max length to avoid overly large chunks that might lose focus.
+    # This is character length, not token length.
+    max_chunk_length = 1500
 
-    for file_path, els in file_elements.items():
-        # Sort elements by page and coordinates to ensure correct reading order
-        els.sort(key=lambda el: (el.metadata.page_number or 0, el.metadata.coordinates.points[0][1] if el.metadata.coordinates else 0))
+    def process_chunk():
+        nonlocal chunk_index, batch_embeddings, batch_documents, batch_metadatas, batch_ids
+        if not current_chunk_elements:
+            return
 
-        current_chunk = ""
-        current_metadata = {}
-        for i, el in enumerate(els):
-            # If we find a title, we start a new chunk
-            if el.category == "Title":
-                # If the previous chunk was not empty, index it
-                if current_chunk:
-                    node_id = generate_node_id(file_path, current_metadata.get('page_number', 1), current_chunk, chunk_index)
-                    chunk_index += 1
-                    batch_embeddings.append(model.encode(current_chunk, convert_to_tensor=False).tolist())
-                    batch_documents.append(current_chunk)
-                    batch_metadatas.append(standardize_metadata(current_metadata))
-                    batch_ids.append(node_id)
-                # Start a new chunk with the title text
-                current_chunk = el.text
-                current_metadata = el.metadata.to_dict()
-                current_metadata['file_path'] = file_path # Ensure file_path is set
-            else: # For other elements (like NarrativeText), append them to the current chunk
-                current_chunk += f"\n\n{el.text}"
+        combined_text = "\n\n".join(current_chunk_text)
 
-            # If it's the last element, make sure to index the final chunk
-            if i == len(els) - 1 and current_chunk:
-                node_id = generate_node_id(file_path, current_metadata.get('page_number', 1), current_chunk, chunk_index)
-                chunk_index += 1
-                batch_embeddings.append(model.encode(current_chunk, convert_to_tensor=False).tolist())
-                batch_documents.append(current_chunk)
-                batch_metadatas.append(standardize_metadata(current_metadata))
-                batch_ids.append(node_id)
+        first_element = current_chunk_elements[0]
+        metadata = standardize_metadata(first_element.metadata.to_dict())
 
-            # Upsert batch if it's full
-            if len(batch_ids) >= batch_size:
-                collection.upsert(embeddings=batch_embeddings, documents=batch_documents, metadatas=batch_metadatas, ids=batch_ids)
-                batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+        file_path = metadata.get("file_path", "Unknown")
+        page_number = metadata.get("page_number", "Unknown")
 
-    # Upsert any remaining documents
+        node_id = generate_node_id(file_path, page_number, combined_text, chunk_index)
+        chunk_index += 1
+
+        batch_documents.append(combined_text)
+        batch_metadatas.append(metadata)
+        batch_ids.append(node_id)
+        batch_embeddings.append(model.encode(combined_text, convert_to_tensor=False).tolist())
+
+        if len(batch_ids) >= batch_size:
+            collection.upsert(embeddings=batch_embeddings, documents=batch_documents, metadatas=batch_metadatas, ids=batch_ids)
+            batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+
+    for element in elements:
+        element_text_length = len(element.text)
+
+        # Titles or tables usually start a new logical block
+        is_new_section_start = element.category in ["Title", "Table"]
+
+        # Condition to split: new section starts or chunk gets too long
+        if (is_new_section_start and current_chunk_elements) or \
+           (current_chunk_text_length + element_text_length > max_chunk_length and current_chunk_elements):
+            process_chunk()
+            # Reset for the next chunk
+            current_chunk_text = []
+            current_chunk_elements = []
+            current_chunk_text_length = 0
+
+        current_chunk_elements.append(element)
+        current_chunk_text.append(element.text)
+        current_chunk_text_length += element_text_length
+
+    # Process any remaining chunk after the loop
+    process_chunk()
+
+    # Upsert any remaining items in the last batch
     if batch_ids:
         collection.upsert(embeddings=batch_embeddings, documents=batch_documents, metadatas=batch_metadatas, ids=batch_ids)
+
+    logger.info(f"Successfully indexed {chunk_index} semantic chunks.")
 
 
 async def index_files_from_path(root_path: str, recursive: bool, required_exts: list, use_advanced_indexing: bool = False):
     """Loads documents from a path and indexes them into ChromaDB."""
-
     collection_name = "file_embeddings_unstructured" if use_advanced_indexing else "file_embeddings"
     logger.info(f"Using collection: {collection_name}")
     chroma_client = get_chroma_client()
     collection = create_collection(chroma_client, name=collection_name)
 
     if use_advanced_indexing:
-        logger.info("Using advanced indexing with Unstructured and semantic chunking.")
-        all_elements = []
-        # Manually walk the directory to find files and process them
-        for root, _, files in os.walk(root_path):
-            for file in files:
-                if any(file.endswith(ext) for ext in required_exts):
-                    file_path = os.path.join(root, file)
-                    try:
-                        # Use partition_auto to get structured elements
-                        elements = partition_auto(filename=file_path, strategy="hi_res")
-                        for el in elements:
-                            el.metadata.filename = file_path # Add filename to metadata
-                        all_elements.extend(elements)
-                        logger.info(f"Successfully parsed {len(elements)} elements from {file_path}")
-                    except Exception as e:
-                        logger.error(f"Failed to parse {file_path}: {e}")
+        logger.info("Using advanced indexing with Unstructured partition_auto.")
 
-        logger.info(f"Total elements parsed: {len(all_elements)}. Starting indexing.")
-        index_documents_structured(all_elements, collection)
+        files_to_process = []
+        if recursive:
+            for dirpath, _, filenames in os.walk(root_path):
+                for filename in filenames:
+                    files_to_process.append(os.path.join(dirpath, filename))
+        else:
+            files_to_process = [os.path.join(root_path, f) for f in os.listdir(root_path) if os.path.isfile(os.path.join(root_path, f))]
+
+        filtered_files = [f for f in files_to_process if any(f.endswith(ext) for ext in required_exts)]
+        logger.info(f"Found {len(filtered_files)} file(s) to process with Unstructured.")
+
+        all_elements = []
+        for filename in filtered_files:
+            try:
+                # Use "hi_res" strategy for PDFs for better layout detection
+                strategy = "hi_res" if filename.endswith(".pdf") else "auto"
+                elements = partition_auto(filename=filename, strategy=strategy)
+                for element in elements:
+                    # Keep the original filename for display
+                    element.metadata.filename = os.path.basename(filename)
+                    # Add full path for unique identification and access
+                    element.metadata.file_path = filename
+                all_elements.extend(elements)
+            except Exception as e:
+                logger.error(f"Failed to process {filename} with Unstructured: {e}")
+
+        # This new function will handle the semantic chunking and indexing
+        index_documents_unstructured(all_elements, collection)
 
     else:
         logger.info("Using standard indexing.")
@@ -203,59 +226,53 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
         logger.info(f"Loaded {len(documents)} document(s) from the specified path.")
         index_documents(documents, collection)
 
-async def query_rag(query: str, collection, top_k: int = 5, use_reranking: bool = False):
+async def query_rag(query: str, collection, top_k: int = 5):
     """
-    Queries the RAG pipeline to get a structured response.
-    Optionally uses a cross-encoder for re-ranking if `use_reranking` is True.
+    Queries the RAG pipeline with an optional re-ranking step for the advanced collection.
     """
-    # Create an embedding for the user's query
     query_embedding = model.encode(query, convert_to_tensor=False).tolist()
 
-    # Step 1: Initial Retrieval from ChromaDB
-    # If re-ranking is enabled, fetch more documents initially (e.g., top 20)
-    initial_k = 20 if use_reranking else top_k
+    # For re-ranking, we fetch more initial results.
+    initial_results_count = top_k * 4 if collection.name == "file_embeddings_unstructured" else top_k
+
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=initial_k,
+        n_results=initial_results_count,
         include=["documents", "metadatas", "distances"]
     )
 
-    # Unify results
-    query_results = results.get('documents', [[]])[0]
+    documents = results.get('documents', [[]])[0]
     metadatas = results.get('metadatas', [[]])[0]
     distances = results.get('distances', [[]])[0]
 
-    if not query_results:
-        return {
-            "main_response": {"response": "No relevant documents found.", "source": None},
-            "other_relevant_passages": []
-        }
+    if not documents:
+        return {"main_response": {"response": "No relevant documents found.", "source": None}, "other_relevant_passages": []}
 
-    # Step 2: Re-ranking with Cross-Encoder (if enabled)
-    if use_reranking:
-        logger.info(f"Re-ranking {len(query_results)} documents with cross-encoder...")
-        # Create pairs of [query, document] for the cross-encoder
-        cross_inp = [[query, doc] for doc in query_results]
-        # Get scores from the model
-        scores = cross_encoder.predict(cross_inp)
+    # --- Re-ranking logic for the advanced pipeline ---
+    if collection.name == "file_embeddings_unstructured":
+        logger.info(f"Applying CrossEncoder re-ranking to {len(documents)} results.")
+        # Create pairs of [query, document] for scoring
+        sentence_pairs = [[query, doc] for doc in documents]
 
-        # Combine documents with their new scores and original metadata
-        reranked_results = []
-        for i, score in enumerate(scores):
-            reranked_results.append({
-                "document": query_results[i],
-                "metadata": metadatas[i],
-                "score": score
-            })
+        # Compute scores and sort
+        scores = cross_encoder.predict(sentence_pairs)
+        scored_results = sorted(zip(scores, documents, metadatas), key=lambda x: x[0], reverse=True)
 
-        # Sort results by the new score in descending order
-        reranked_results.sort(key=lambda x: x["score"], reverse=True)
-        # Keep only the top_k results after re-ranking
-        unique_results = reranked_results[:top_k]
+        # Reconstruct the results list with the top re-ranked items
+        unique_results = []
+        seen = set()
+        for score, doc, meta in scored_results:
+            identifier = (meta["file_path"], doc[:50])
+            if identifier not in seen:
+                unique_results.append({"document": doc, "metadata": meta, "score": score})
+                seen.add(identifier)
+            if len(unique_results) >= top_k:
+                break
+
+    # --- Standard logic for the default pipeline ---
     else:
-        # If not re-ranking, use the original ChromaDB results and heuristics
         combined_results = []
-        for i, doc in enumerate(query_results):
+        for i, doc in enumerate(documents):
             combined_results.append({
                 "document": doc,
                 "metadata": metadatas[i],
@@ -276,7 +293,9 @@ async def query_rag(query: str, collection, top_k: int = 5, use_reranking: bool 
                 unique_results.append(res)
                 seen.add(identifier)
 
-    # Isolate the best result for the main response
+    if not unique_results:
+         return {"main_response": {"response": "No relevant documents found after filtering.", "source": None}, "other_relevant_passages": []}
+
     best_result = unique_results[0]
     other_relevant_passages = unique_results[1:]
 
