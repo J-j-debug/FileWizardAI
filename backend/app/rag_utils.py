@@ -23,12 +23,12 @@ def create_collection(client, name="file_embeddings"):
     """Creates a new collection or gets an existing one."""
     return client.get_or_create_collection(name=name)
 
-def generate_node_id(file_path, page_number, content):
-    """Generates a deterministic ID for a node based on its content and source."""
+def generate_node_id(file_path, page_number, content, chunk_index):
+    """Generates a deterministic ID for a node based on its content, source, and chunk order."""
     # Use the first 256 characters of the content to keep the hash manageable
     # while still being highly specific.
     text_snippet = content[:256]
-    hash_object = hashlib.sha256(f"{file_path}-{page_number}-{text_snippet}".encode())
+    hash_object = hashlib.sha256(f"{file_path}-{page_number}-{text_snippet}-{chunk_index}".encode())
     return hash_object.hexdigest()
 
 def standardize_metadata(metadata):
@@ -56,6 +56,7 @@ def index_documents(documents: list[Document], collection):
     batch_documents = []
     batch_metadatas = []
     batch_ids = []
+    chunk_index = 0
 
     for doc in documents:
         doc.metadata = standardize_metadata(doc.metadata)
@@ -71,7 +72,8 @@ def index_documents(documents: list[Document], collection):
                     page_number = node.metadata.get("page_number")
                     content = node.get_content()
 
-                    node_id = generate_node_id(file_path, page_number, content)
+                    node_id = generate_node_id(file_path, page_number, content, chunk_index)
+                    chunk_index += 1
 
                     batch_embeddings.append(model.encode(content, convert_to_tensor=False).tolist())
                     batch_documents.append(content)

@@ -1,1 +1,0 @@
-Le RAG est une technique d'IA.
