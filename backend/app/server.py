@@ -8,10 +8,17 @@ import subprocess
 import platform
 import base64
 import mimetypes
+import asyncio
 from fastapi import Response
 from fastapi.responses import FileResponse
 
 app = FastAPI()
+
+@app.on_event("startup")
+async def startup_event():
+    # This will run in a separate thread to not block the server startup.
+    asyncio.create_task(rag_utils.warm_up_unstructured())
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

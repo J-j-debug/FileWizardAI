@@ -9,6 +9,7 @@ import asyncio
 import logging
 import hashlib
 import os
+import shutil
 from unstructured.partition.auto import partition
 
 logger = logging.getLogger(__name__)
@@ -18,9 +19,35 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 db = SQLiteDB()
 
+_poppler_installed = None
+
+def is_poppler_installed():
+    """Check if poppler is installed."""
+    global _poppler_installed
+    if _poppler_installed is None:
+        _poppler_installed = shutil.which("pdftoppm") is not None
+    return _poppler_installed
+
 def get_chroma_client(path="chroma_db"):
     """Initializes and returns a ChromaDB client."""
     return chromadb.PersistentClient(path=path)
+
+async def warm_up_unstructured():
+    """
+    Pre-downloads and caches the layout model for Unstructured to avoid
+    long delays on the first advanced indexing request.
+    """
+    logger.info("Starting warm-up for Unstructured layout model...")
+    try:
+        # Running a dummy partition call on a tiny, non-existent file path
+        # is enough to trigger the model download if it's not cached.
+        # This is a blocking I/O operation, so we run it in a thread.
+        await asyncio.to_thread(partition, filename="warmup.pdf", strategy="hi_res")
+        logger.info("Unstructured warm-up completed or model already cached.")
+    except Exception as e:
+        # We log the error but don't crash the server.
+        # The app can still function, just the first request will be slow.
+        logger.error(f"Unstructured warm-up failed: {e}")
 
 def create_collection(client, name="file_embeddings"):
     """Creates a new collection or gets an existing one."""
@@ -199,18 +226,25 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
         if recursive:
             for dirpath, _, filenames in os.walk(root_path):
                 for filename in filenames:
-                    files_to_process.append(os.path.join(dirpath, filename))
+                    if not filename.startswith('~$'):
+                        files_to_process.append(os.path.join(dirpath, filename))
         else:
-            files_to_process = [os.path.join(root_path, f) for f in os.listdir(root_path) if os.path.isfile(os.path.join(root_path, f))]
+            files_to_process = [os.path.join(root_path, f) for f in os.listdir(root_path) if os.path.isfile(os.path.join(root_path, f)) and not f.startswith('~$')]
 
         filtered_files = [f for f in files_to_process if any(f.endswith(ext) for ext in required_exts)]
         logger.info(f"Found {len(filtered_files)} file(s) to process with Unstructured.")
 
         all_elements = []
+        poppler_present = is_poppler_installed()
+        if not poppler_present:
+            logger.warning("Poppler is not installed or not in PATH. PDF parsing will be degraded to 'fast' mode.")
+
         for filename in filtered_files:
             try:
-                # Use "hi_res" strategy for PDFs for better layout detection
-                strategy = "hi_res" if filename.endswith(".pdf") else "auto"
+                strategy = "auto"
+                if filename.endswith(".pdf"):
+                    strategy = "hi_res" if poppler_present else "fast"
+
                 elements = partition(filename=filename, strategy=strategy)
                 for element in elements:
                     # Keep the original filename for display
@@ -226,12 +260,26 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
 
     else:
         logger.info("Using standard indexing.")
+
+        # We must manually filter out temporary files for SimpleDirectoryReader
+        # by providing a list of files, as it doesn't support exclusion patterns directly.
+        files_to_process = []
+        if recursive:
+            for dirpath, _, filenames in os.walk(root_path):
+                for filename in filenames:
+                    if not filename.startswith('~$'):
+                        files_to_process.append(os.path.join(dirpath, filename))
+        else:
+            files_to_process = [os.path.join(root_path, f) for f in os.listdir(root_path) if os.path.isfile(os.path.join(root_path, f)) and not f.startswith('~$')]
+
+        # Filter by extension after collecting all files
+        input_files = [f for f in files_to_process if any(f.endswith(ext) for ext in required_exts)]
+
         reader = SimpleDirectoryReader(
-            input_dir=root_path,
-            recursive=recursive,
-            required_exts=required_exts,
+            input_files=input_files,
             errors='warn'
         )
+
         documents = reader.load_data()
         logger.info(f"Loaded {len(documents)} document(s) from the specified path.")
         index_documents(documents, collection)
