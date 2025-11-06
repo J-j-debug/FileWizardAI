@@ -1,6 +1,7 @@
 import time
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 from openai import AsyncOpenAI
 import base64
 import logging
@@ -14,13 +15,12 @@ logger = logging.getLogger()
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env')
-    TEXT_API_END_POINT: str
-    TEXT_MODEL_NAME: str
-    TEXT_API_KEYS: list[str]
-    IMAGE_API_END_POINT: str
-    IMAGE_MODEL_NAME: str
-    IMAGE_API_KEYS: list[str]
-
+    TEXT_API_END_POINT: str = ""
+    TEXT_MODEL_NAME: str = ""
+    TEXT_API_KEYS: list[str] = Field(default_factory=list)
+    IMAGE_API_END_POINT: str = ""
+    IMAGE_MODEL_NAME: str = ""
+    IMAGE_API_KEYS: list[str] = Field(default_factory=list)
 
 class Model:
     def __init__(self):
@@ -33,13 +33,18 @@ class Model:
         self.IMAGE_API_KEYS = self.settings.IMAGE_API_KEYS
         self.text_keys_count = len(self.TEXT_API_KEYS)
         self.image_keys_count = len(self.IMAGE_API_KEYS)
-        self.MAX_TOKEN_SIZE = 4000  # Increase or decrease based on the model context window size
+        self.MAX_TOKEN_SIZE = 4000
         self.cnt_txt = 0
         self.cnt_img = 0
-        self.async_text_clients = [AsyncOpenAI(base_url=self.TEXT_API_END_POINT, api_key=api_key)
-                                   for api_key in self.TEXT_API_KEYS]
-        self.async_image_clients = [AsyncOpenAI(base_url=self.IMAGE_API_END_POINT, api_key=api_key)
-                                    for api_key in self.IMAGE_API_KEYS]
+        # Lazy init: crée les clients seulement si des clés existent
+        self.async_text_clients = []
+        self.async_image_clients = []
+        if self.text_keys_count:
+            self.async_text_clients = [AsyncOpenAI(base_url=self.TEXT_API_END_POINT, api_key=k)
+                                       for k in self.TEXT_API_KEYS]
+        if self.image_keys_count:
+            self.async_image_clients = [AsyncOpenAI(base_url=self.IMAGE_API_END_POINT, api_key=k)
+                                        for k in self.IMAGE_API_KEYS]
 
     async def summarize_image_api(self, image_path):
         prompt = """
@@ -71,7 +76,7 @@ class Model:
             while attempt < 5:
                 try:
                     chat_completion = await self.async_image_clients[
-                        self.cnt_img % self.text_keys_count].chat.completions.create(
+                        self.cnt_img % self.image_keys_count].chat.completions.create(
                         model=self.IMAGE_MODEL_NAME,
                         messages=[
                             {
@@ -129,21 +134,27 @@ class Model:
                 self.cnt_txt += 1
         return summary
 
-    async def generate_rag_response_api(self, doc_text: str, query: str):
-        prompt = f"""
-        You are a search assistant. Your task is to find and extract the most relevant passages from the provided text to answer the user's query.
-        Do not synthesize or generate new answers. Your response should consist only of direct quotes from the text.
-        Present the results in a "Citations" section, listing each relevant quote.
+    async def generate_rag_response_api(self, context: str, query: str, custom_prompt_template: str = None):
+        if custom_prompt_template:
+            # Use the custom template provided by the user
+            prompt = custom_prompt_template.format(query=query, context=context)
+        else:
+            # Use the default, direct-extraction prompt
+            prompt = f"""
+            You are a search assistant. Your task is to find and extract the most relevant passages from the provided text to answer the user's query.
+            Do not synthesize or generate new answers. Your response should consist only of direct quotes from the text.
+            If no relevant passages are found, simply state that.
 
-        **Query:** {query}
+            **Query:** {query}
 
-        **Context:**
-        ---
-        {doc_text}
-        ---
+            **Context:**
+            ---
+            {context}
+            ---
 
-        **Citations:**
-        """.strip()
+            **Citations:**
+            """.strip()
+
         attempt = 0
         summary = ""
         # To avoid rate_limit_exceeded or api error
@@ -153,7 +164,7 @@ class Model:
                     self.cnt_txt % self.text_keys_count].chat.completions.create(
                     model=self.TEXT_MODEL_NAME,
                     messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "system", "content": "You are a helpful assistant that answers questions based on the provided context."},
                         {"role": "user", "content": prompt},
                     ],
                     stream=False,

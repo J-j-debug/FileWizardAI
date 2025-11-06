@@ -23,7 +23,33 @@ import { DataService } from "../data.service";
         <input matInput type="number" [(ngModel)]="topK" min="1" max="20">
       </mat-form-field>
       <button mat-raised-button (click)="searchFiles()" class="search-button">Search</button>
+      <button mat-icon-button (click)="toggleAdvancedSettings()" matTooltip="Advanced Search Settings">
+        <mat-icon>settings</mat-icon>
+      </button>
     </div>
+
+    <div *ngIf="showAdvancedSettings" class="advanced-settings-panel">
+      <h4>Prompt de Synthèse</h4>
+      <mat-form-field class="prompt-select">
+        <mat-label>Modèle de Prompt</mat-label>
+        <mat-select [(ngModel)]="selectedPrompt" (selectionChange)="onPromptSelectionChange()">
+          <mat-option *ngFor="let prompt of promptTemplates" [value]="prompt.id">
+            {{ prompt.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field class="prompt-textarea">
+        <mat-label>Contenu du Prompt</mat-label>
+        <textarea matInput
+                  [readonly]="selectedPrompt !== 'custom'"
+                  [(ngModel)]="currentPromptContent"
+                  rows="6"></textarea>
+      </mat-form-field>
+      <button mat-stroked-button *ngIf="selectedPrompt === 'custom'" (click)="saveCustomPrompt()">
+        Sauvegarder le prompt personnalisé
+      </button>
+    </div>
+
     <div class="spinner-container" *ngIf="isLoading">
         <mat-spinner></mat-spinner>
     </div>
@@ -90,6 +116,20 @@ import { DataService } from "../data.service";
       font-size: 0.9em;
       color: #555;
     }
+    .advanced-settings-panel {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      background-color: #f9f9f9;
+    }
+    .prompt-select {
+      width: 100%;
+    }
+    .prompt-textarea {
+      width: 100%;
+      margin-top: 1rem;
+    }
   `]
 })
 export class SearchFilesComponent {
@@ -102,15 +142,81 @@ export class SearchFilesComponent {
     { value: "file_embeddings", viewValue: "Recherche Standard" },
     { value: "file_embeddings_unstructured", viewValue: "Recherche Avancée (Unstructured)" }
   ];
+
+  // Advanced settings
+  showAdvancedSettings: boolean = false;
+  selectedPrompt: string = 'default';
+  currentPromptContent: string = '';
+  promptTemplates = [
+    { id: 'default', name: 'Prompt par Défaut (Extraction Directe)', content: `
+        You are a search assistant. Your task is to find and extract the most relevant passages from the provided text to answer the user's query.
+        Do not synthesize or generate new answers. Your response should consist only of direct quotes from the text.
+        If no relevant passages are found, simply state that.
+
+        **Query:** {query}
+
+        **Context:**
+        ---
+        {context}
+        ---
+
+        **Citations:**
+    `.trim() },
+    { id: 'summary', name: 'Prompt de Synthèse', content: `
+        Réponds à la question en te basant sur le texte fourni. Si le texte ne contient pas de réponse directe, résume les informations les plus importantes qu'il contient en rapport avec la question.
+
+        **Question:** {query}
+
+        **Texte:**
+        ---
+        {context}
+        ---
+    `.trim() },
+    { id: 'custom', name: 'Prompt Personnalisé', content: '' }
+  ];
+
   @Input() rootPath: string = "";
   @Input() isRecursive: boolean = false;
   @Input() filesExts: string[] = [];
 
   constructor(private dataService: DataService) {
+    this.loadCustomPrompt();
+    this.onPromptSelectionChange();
   }
 
   encodeFilePath(path: string): string {
     return btoa(path);
+  }
+
+  toggleAdvancedSettings() {
+    this.showAdvancedSettings = !this.showAdvancedSettings;
+  }
+
+  onPromptSelectionChange() {
+    const selectedTemplate = this.promptTemplates.find(p => p.id === this.selectedPrompt);
+    if (selectedTemplate) {
+      this.currentPromptContent = selectedTemplate.content;
+    }
+  }
+
+  loadCustomPrompt() {
+    const savedPrompt = localStorage.getItem('customRagPrompt');
+    const customPromptTemplate = this.promptTemplates.find(p => p.id === 'custom');
+    if (customPromptTemplate && savedPrompt) {
+      customPromptTemplate.content = savedPrompt;
+    } else if (customPromptTemplate) {
+      customPromptTemplate.content = 'Écrivez votre prompt personnalisé ici. Utilisez {query} et {context} comme variables.';
+    }
+  }
+
+  saveCustomPrompt() {
+    localStorage.setItem('customRagPrompt', this.currentPromptContent);
+    const customPromptTemplate = this.promptTemplates.find(p => p.id === 'custom');
+    if (customPromptTemplate) {
+      customPromptTemplate.content = this.currentPromptContent;
+    }
+    // You might want to add a visual confirmation, like a snackbar
+    console.log("Prompt personnalisé sauvegardé !");
   }
 
   searchFiles(): void {
@@ -120,6 +226,12 @@ export class SearchFilesComponent {
     params = params.set("query", this.searchQuery);
     params = params.set("collection_name", this.selectedCollection);
     params = params.set("top_k", this.topK.toString());
+
+    // Add the selected prompt content to the request
+    if (this.currentPromptContent) {
+      params = params.set("prompt_template", this.currentPromptContent);
+    }
+
     this.dataService
       .ragSearch(params)
       .subscribe((data: any) => {

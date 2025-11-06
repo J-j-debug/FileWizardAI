@@ -109,10 +109,10 @@ async def download_file(encoded_path: str):
 
 
 @app.get("/rag_search")
-async def rag_search(query: str, collection_name: str = "file_embeddings", top_k: int = 5):
+async def rag_search(query: str, collection_name: str = "file_embeddings", top_k: int = 5, prompt_template: str = None):
     chroma_client = rag_utils.get_chroma_client()
     collection = rag_utils.create_collection(chroma_client, name=collection_name)
-    result = await rag_utils.query_rag(query, collection, top_k)
+    result = await rag_utils.query_rag(query, collection, top_k, prompt_template)
     return result
 
 @app.post("/index_files")
@@ -180,17 +180,16 @@ async def get_llm_providers():
 async def update_llm_config(request: Request):
     data = await request.json()
     
-    # Create .env content
-    env_content = f"""# API and MODEL used for documents processing
-TEXT_API_END_POINT={data['text_endpoint']}
-TEXT_MODEL_NAME={data['text_model']}
-TEXT_API_KEYS={data['text_api_keys']}
-
-# API and MODEL used for images processing
-IMAGE_API_END_POINT={data['image_endpoint']}
-IMAGE_MODEL_NAME={data['image_model']}
-IMAGE_API_KEYS={data['image_api_keys']}
-"""
+    # Create .env content ensuring valid JSON for lists and quoted strings
+    env_content = (
+        f'TEXT_API_END_POINT="{data["text_endpoint"]}"\n'
+        f'TEXT_MODEL_NAME="{data["text_model"]}"\n'
+        f'TEXT_API_KEYS={json.dumps(data["text_api_keys"])}\n'
+        f'\n'
+        f'IMAGE_API_END_POINT="{data["image_endpoint"]}"\n'
+        f'IMAGE_MODEL_NAME="{data["image_model"]}"\n'
+        f'IMAGE_API_KEYS={json.dumps(data["image_api_keys"])}\n'
+    )
     
     # Write to .env file
     try:
