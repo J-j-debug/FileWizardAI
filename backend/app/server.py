@@ -109,10 +109,10 @@ async def download_file(encoded_path: str):
 
 
 @app.get("/rag_search")
-async def rag_search(query: str, collection_name: str = "file_embeddings", top_k: int = 5):
+async def rag_search(query: str, collection_name: str = "file_embeddings", top_k: int = 5, prompt_template: str = None):
     chroma_client = rag_utils.get_chroma_client()
     collection = rag_utils.create_collection(chroma_client, name=collection_name)
-    result = await rag_utils.query_rag(query, collection, top_k)
+    result = await rag_utils.query_rag(query, collection, top_k, prompt_template)
     return result
 
 @app.post("/index_files")

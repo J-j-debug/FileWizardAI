@@ -303,9 +303,10 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
         logger.info(f"Loaded {len(documents)} document(s) from the specified path.")
         index_documents(documents, collection)
 
-async def query_rag(query: str, collection, top_k: int = 5):
+async def query_rag(query: str, collection, top_k: int = 5, prompt_template: str = None):
     """
-    Queries the RAG pipeline with an optional re-ranking step for the advanced collection.
+    Queries the RAG pipeline with an optional re-ranking step for the advanced collection,
+    and allows for a custom prompt template for the final response generation.
     """
     query_embedding = model.encode(query, convert_to_tensor=False).tolist()
 
@@ -378,7 +379,11 @@ async def query_rag(query: str, collection, top_k: int = 5):
 
     # Generate the main response using only the best context
     llm = Model()
-    main_response_text = await llm.generate_rag_response_api(best_result["document"], query)
+    main_response_text = await llm.generate_rag_response_api(
+        context=best_result["document"],
+        query=query,
+        custom_prompt_template=prompt_template
+    )
 
     main_response = {
         "response": main_response_text,

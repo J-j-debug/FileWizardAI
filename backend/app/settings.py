@@ -129,21 +129,27 @@ class Model:
                 self.cnt_txt += 1
         return summary
 
-    async def generate_rag_response_api(self, doc_text: str, query: str):
-        prompt = f"""
-        You are a search assistant. Your task is to find and extract the most relevant passages from the provided text to answer the user's query.
-        Do not synthesize or generate new answers. Your response should consist only of direct quotes from the text.
-        Present the results in a "Citations" section, listing each relevant quote.
+async def generate_rag_response_api(self, context: str, query: str, custom_prompt_template: str = None):
+        if custom_prompt_template:
+            # Use the custom template provided by the user
+            prompt = custom_prompt_template.format(query=query, context=context)
+        else:
+            # Use the default, direct-extraction prompt
+            prompt = f"""
+            You are a search assistant. Your task is to find and extract the most relevant passages from the provided text to answer the user's query.
+            Do not synthesize or generate new answers. Your response should consist only of direct quotes from the text.
+            If no relevant passages are found, simply state that.
 
-        **Query:** {query}
+            **Query:** {query}
 
-        **Context:**
-        ---
-        {doc_text}
-        ---
+            **Context:**
+            ---
+            {context}
+            ---
 
-        **Citations:**
-        """.strip()
+            **Citations:**
+            """.strip()
+
         attempt = 0
         summary = ""
         # To avoid rate_limit_exceeded or api error
@@ -153,7 +159,7 @@ class Model:
                     self.cnt_txt % self.text_keys_count].chat.completions.create(
                     model=self.TEXT_MODEL_NAME,
                     messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "system", "content": "You are a helpful assistant that answers questions based on the provided context."},
                         {"role": "user", "content": prompt},
                     ],
                     stream=False,
