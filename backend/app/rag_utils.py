@@ -35,18 +35,28 @@ def generate_node_id(file_path, page_number, content, chunk_index):
     return hash_object.hexdigest()
 
 def standardize_metadata(metadata):
-    """Standardizes page number metadata and ensures file_path exists."""
-    page_number = metadata.get("page_number") or metadata.get("page_label", "Unknown")
-    metadata["page_number"] = str(page_number) # Ensure page number is a string
+    """
+    Standardizes metadata to be compatible with ChromaDB. It ensures page numbers are
+    strings and converts any list values into comma-separated strings to avoid errors.
+    """
+    processed_metadata = {}
+    for key, value in metadata.items():
+        if isinstance(value, list):
+            # Convert list to a comma-separated string
+            processed_metadata[key] = ','.join(map(str, value))
+        else:
+            processed_metadata[key] = value
 
-    # Clean up old keys if they exist
-    if "page_label" in metadata:
-        del metadata["page_label"]
+    page_number = processed_metadata.get("page_number") or processed_metadata.get("page_label", "Unknown")
+    processed_metadata["page_number"] = str(page_number)
 
-    if "file_path" not in metadata:
-        metadata["file_path"] = "Unknown"
+    if "page_label" in processed_metadata:
+        del processed_metadata["page_label"]
 
-    return metadata
+    if "file_path" not in processed_metadata:
+        processed_metadata["file_path"] = "Unknown"
+
+    return processed_metadata
 
 def index_documents(documents: list[Document], collection):
     """
