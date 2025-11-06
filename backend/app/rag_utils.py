@@ -10,6 +10,8 @@ import logging
 import hashlib
 import os
 import shutil
+import json
+import tempfile
 from unstructured.partition.auto import partition
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,7 @@ cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 db = SQLiteDB()
 
 _poppler_installed = None
+_tesseract_installed = None
 
 def is_poppler_installed():
     """Check if poppler is installed."""
@@ -27,6 +30,13 @@ def is_poppler_installed():
     if _poppler_installed is None:
         _poppler_installed = shutil.which("pdftoppm") is not None
     return _poppler_installed
+
+def is_tesseract_installed():
+    """Check if tesseract is installed."""
+    global _tesseract_installed
+    if _tesseract_installed is None:
+        _tesseract_installed = shutil.which("tesseract") is not None
+    return _tesseract_installed
 
 def get_chroma_client(path="chroma_db"):
     """Initializes and returns a ChromaDB client."""
@@ -39,10 +49,10 @@ async def warm_up_unstructured():
     """
     logger.info("Starting warm-up for Unstructured layout model...")
     try:
-        # Running a dummy partition call on a tiny, non-existent file path
-        # is enough to trigger the model download if it's not cached.
-        # This is a blocking I/O operation, so we run it in a thread.
-        await asyncio.to_thread(partition, filename="warmup.pdf", strategy="hi_res")
+        # Create a temporary empty file to trigger the model download
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmp:
+            # This is a blocking I/O operation, so we run it in a thread.
+            await asyncio.to_thread(partition, filename=tmp.name, strategy="hi_res")
         logger.info("Unstructured warm-up completed or model already cached.")
     except Exception as e:
         # We log the error but don't crash the server.
@@ -64,13 +74,13 @@ def generate_node_id(file_path, page_number, content, chunk_index):
 def standardize_metadata(metadata):
     """
     Standardizes metadata to be compatible with ChromaDB. It ensures page numbers are
-    strings and converts any list values into comma-separated strings to avoid errors.
+    strings and converts any list or dict values into JSON strings to avoid errors.
     """
     processed_metadata = {}
     for key, value in metadata.items():
-        if isinstance(value, list):
-            # Convert list to a comma-separated string
-            processed_metadata[key] = ','.join(map(str, value))
+        if isinstance(value, (list, dict)):
+            # Convert list or dict to a JSON string
+            processed_metadata[key] = json.dumps(value)
         else:
             processed_metadata[key] = value
 
@@ -236,13 +246,22 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
 
         all_elements = []
         poppler_present = is_poppler_installed()
+        tesseract_present = is_tesseract_installed()
+
         if not poppler_present:
             logger.warning("Poppler is not installed or not in PATH. PDF parsing will be degraded to 'fast' mode.")
+        if not tesseract_present:
+            logger.warning("Tesseract is not installed or not in PATH. Image parsing will be skipped.")
 
         for filename in filtered_files:
             try:
+                # Skip image files if Tesseract is not installed
+                file_ext = os.path.splitext(filename)[1].lower()
+                if file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp'] and not tesseract_present:
+                    continue
+
                 strategy = "auto"
-                if filename.endswith(".pdf"):
+                if file_ext == ".pdf":
                     strategy = "hi_res" if poppler_present else "fast"
 
                 elements = partition(filename=filename, strategy=strategy)
