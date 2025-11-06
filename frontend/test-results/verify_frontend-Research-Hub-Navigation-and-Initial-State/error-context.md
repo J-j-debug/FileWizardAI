@@ -136,7 +136,7 @@
             - generic [ref=e167]: Search
           - button [ref=e170] [cursor=pointer]:
             - img [ref=e171]: settings
-  - iframe [ref=e174]:
+  - iframe [ref=e175]:
     - generic [ref=f1e2]:
       - text: "Compiled with problems:"
       - button "X" [ref=f1e3] [cursor=pointer]
@@ -196,21 +196,21 @@
       - generic [ref=f1e31]:
         - text: ERROR
         - generic [ref=f1e32]:
-          - text: src/app/app.module.ts:10:39 - error
+          - text: src/app/app.module.ts:13:39 - error
           - generic [ref=f1e33]:
             - text: "TS2307:"
-            - generic [ref=f1e34]: "Cannot find module './components/notebook-view.component' or its corresponding type declarations. 10 import { NotebookViewComponent } from './components/notebook-view.component'; // Import NotebookViewComponent ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            - generic [ref=f1e34]: "Cannot find module './components/notebook-view.component' or its corresponding type declarations. 13 import { NotebookViewComponent } from './components/notebook-view.component'; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
       - generic [ref=f1e35]:
         - text: ERROR
         - generic [ref=f1e36]:
-          - text: src/app/app.module.ts:34:12 - error
+          - text: src/app/app.module.ts:38:12 - error
           - generic [ref=f1e37]:
             - text: "NG1010:"
-            - generic [ref=f1e38]: "Value at position 20 in the NgModule.imports of AppModule is not a reference Value could not be determined statically. 34 imports: [ ~"
-            - generic [ref=f1e39]: 35 BrowserModule, ~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e38]: "Value at position 20 in the NgModule.imports of AppModule is not a reference Value could not be determined statically. 38 imports: [ ~"
+            - generic [ref=f1e39]: 39 BrowserModule, ~~~~~~~~~~~~~~~~~~
             - text: ...
-            - generic [ref=f1e40]: 57 NotebookViewComponent ~~~~~~~~~~~~~~~~~~~~~~~~~
-            - generic [ref=f1e41]: 58 ], ~~~ src/app/app.module.ts:57:5 57 NotebookViewComponent ~~~~~~~~~~~~~~~~~~~~~ Unknown reference.
+            - generic [ref=f1e40]: 63 NotebookViewComponent ~~~~~~~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e41]: 64 ], ~~~ src/app/app.module.ts:63:5 63 NotebookViewComponent ~~~~~~~~~~~~~~~~~~~~~ Unknown reference.
       - generic [ref=f1e42]:
         - text: ERROR
         - generic [ref=f1e43]:
