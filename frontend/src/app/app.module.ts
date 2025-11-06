@@ -6,6 +6,9 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { FolderTreeComponent } from './components/folder-tree.component';
 import { SearchFilesComponent } from './components/search-files.component';
 import { LlmSettingsComponent } from './components/llm-settings.component';
+import { ResearchHubComponent } from './components/research-hub.component';
+import { NotebookViewComponent } from './components/notebook-view.component'; // Import NotebookViewComponent
+
 import { MatTreeModule } from "@angular/material/tree";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
@@ -17,19 +20,42 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatCardModule } from "@angular/material/card";
 import { MatInputModule } from "@angular/material/input";
 import { MatToolbarModule } from "@angular/material/toolbar";
-import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTabsModule } from '@angular/material/tabs'; // Import MatTabsModule
+import { MatListModule } from '@angular/material/list'; // Import MatListModule
 
 @NgModule({
   declarations: [
     AppComponent,
     FolderTreeComponent,
-    SearchFilesComponent,
     LlmSettingsComponent
   ],
-  imports: [BrowserModule, BrowserAnimationsModule, MatTreeModule, MatIconModule, MatButtonModule, HttpClientModule,
-    MatCheckboxModule, FormsModule, MatSelectModule, ReactiveFormsModule, MatFormFieldModule,
-    MatSelectModule, FormsModule, ReactiveFormsModule, MatCardModule, MatInputModule, MatToolbarModule, MatProgressSpinnerModule, MatTooltipModule],
+  imports: [
+    BrowserModule,
+    BrowserAnimationsModule,
+    HttpClientModule,
+    FormsModule,
+    ReactiveFormsModule,
+    // Material Modules
+    MatTreeModule,
+    MatIconModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatCardModule,
+    MatInputModule,
+    MatToolbarModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
+    MatTabsModule,
+    MatListModule,
+    // Standalone Components
+    SearchFilesComponent,
+    ResearchHubComponent,
+    NotebookViewComponent
+  ],
   providers: [],
   bootstrap: [AppComponent]
 })

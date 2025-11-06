@@ -11,8 +11,29 @@ import mimetypes
 import asyncio
 from fastapi import Response
 from fastapi.responses import FileResponse
+from .database import SQLiteDB
+from pydantic import BaseModel
+import json
+
+# Pydantic models for request bodies
+class NotebookCreate(BaseModel):
+    name: str
+    description: str = ""
+
+class NotebookUpdate(BaseModel):
+    name: str
+    description: str
+
+class NotebookFiles(BaseModel):
+    file_paths: list[str]
+
+class IndexRequest(BaseModel):
+    file_paths: list[str]
+    use_advanced_indexing: bool = False
+
 
 app = FastAPI()
+db = SQLiteDB()
 
 @app.on_event("startup")
 async def startup_event():
@@ -32,6 +53,79 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 @app.get('/')
 def get_angular_app():
     return FileResponse("app/static/index.html")
+
+# --- Notebooks Endpoints ---
+
+@app.post("/notebooks", status_code=201)
+async def create_notebook(notebook: NotebookCreate):
+    notebook_id = db.create_notebook(notebook.name, notebook.description)
+    if notebook_id is None:
+        raise HTTPException(status_code=409, detail=f"A notebook with the name '{notebook.name}' already exists.")
+    return {"id": notebook_id, "name": notebook.name, "description": notebook.description}
+
+@app.get("/notebooks")
+async def get_notebooks():
+    notebooks = db.get_notebooks()
+    return [{"id": n[0], "name": n[1], "description": n[2]} for n in notebooks]
+
+@app.put("/notebooks/{notebook_id}")
+async def update_notebook(notebook_id: int, notebook: NotebookUpdate):
+    success = db.update_notebook(notebook_id, notebook.name, notebook.description)
+    if not success:
+        raise HTTPException(status_code=409, detail=f"A notebook with the name '{notebook.name}' already exists.")
+    return {"message": "Notebook updated successfully"}
+
+@app.delete("/notebooks/{notebook_id}")
+async def delete_notebook(notebook_id: int):
+    # First, delete associated ChromaDB collections
+    rag_utils.delete_notebook_collections(notebook_id)
+    # Then, delete the notebook from the database
+    db.delete_notebook(notebook_id)
+    return {"message": "Notebook and associated data deleted successfully"}
+
+@app.post("/notebooks/{notebook_id}/files", status_code=201)
+async def add_files_to_notebook(notebook_id: int, files: NotebookFiles):
+    success = db.add_files_to_notebook(notebook_id, files.file_paths)
+    if not success:
+        raise HTTPException(status_code=400, detail="Error adding files. Ensure file paths are valid and not already in the notebook.")
+    return {"message": "Files added to notebook successfully"}
+
+@app.get("/notebooks/{notebook_id}/files")
+async def get_notebook_files(notebook_id: int):
+    files = db.get_files_for_notebook(notebook_id)
+    return {"file_paths": files}
+
+@app.delete("/notebooks/{notebook_id}/files")
+async def remove_files_from_notebook(notebook_id: int, files: NotebookFiles):
+    db.remove_files_from_notebook(notebook_id, files.file_paths)
+    return {"message": "Files removed from notebook successfully"}
+
+@app.post("/notebooks/{notebook_id}/index")
+async def index_notebook_files(notebook_id: int, request: IndexRequest):
+    try:
+        await rag_utils.index_files_for_notebook(
+            notebook_id=notebook_id,
+            file_paths=request.file_paths,
+            use_advanced_indexing=request.use_advanced_indexing
+        )
+        return {"message": f"Files for notebook {notebook_id} indexed successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to index files for notebook {notebook_id}: {e}")
+
+@app.get("/notebooks/{notebook_id}/search")
+async def search_in_notebook(notebook_id: int, query: str, use_advanced_indexing: bool = False, top_k: int = 5, prompt_template: str = None):
+    collection_name = rag_utils.get_notebook_collection_name(notebook_id, use_advanced_indexing)
+
+    try:
+        chroma_client = rag_utils.get_chroma_client()
+        # Use get_collection to ensure it exists before querying
+        collection = chroma_client.get_collection(name=collection_name)
+
+        result = await rag_utils.query_rag(query, collection, top_k, prompt_template)
+        return result
+    except Exception as e:
+        # Handle cases where the collection might not exist yet
+        raise HTTPException(status_code=404, detail=f"Could not find collection for notebook {notebook_id}. Have you indexed any files? Error: {e}")
 
 
 @app.get("/get_files")
