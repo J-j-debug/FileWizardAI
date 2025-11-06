@@ -341,7 +341,7 @@ async def query_rag(query: str, collection, top_k: int = 5):
         for score, doc, meta in scored_results:
             identifier = (meta["file_path"], doc[:50])
             if identifier not in seen:
-                unique_results.append({"document": doc, "metadata": meta, "score": score})
+                unique_results.append({"document": doc, "metadata": meta, "score": float(score)})
                 seen.add(identifier)
             if len(unique_results) >= top_k:
                 break
