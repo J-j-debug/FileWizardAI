@@ -8,10 +8,17 @@ import subprocess
 import platform
 import base64
 import mimetypes
+import asyncio
 from fastapi import Response
 from fastapi.responses import FileResponse
 
 app = FastAPI()
+
+@app.on_event("startup")
+async def startup_event():
+    # This will run in a separate thread to not block the server startup.
+    asyncio.create_task(rag_utils.warm_up_unstructured())
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -102,10 +109,10 @@ async def download_file(encoded_path: str):
 
 
 @app.get("/rag_search")
-async def rag_search(query: str, collection_name: str = "file_embeddings"):
+async def rag_search(query: str, collection_name: str = "file_embeddings", top_k: int = 5):
     chroma_client = rag_utils.get_chroma_client()
     collection = rag_utils.create_collection(chroma_client, name=collection_name)
-    result = await rag_utils.query_rag(query, collection)
+    result = await rag_utils.query_rag(query, collection, top_k)
     return result
 
 @app.post("/index_files")
@@ -113,14 +120,19 @@ async def index_files(request: Request):
     data = await request.json()
     root_path = data.get('root_path')
     recursive = data.get('recursive')
-    required_exts = data.get('required_exts')
+    required_exts = data.get('required_exts', "")
     use_advanced_indexing = data.get('use_advanced_indexing', False)
 
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
 
-    required_exts = required_exts.split(';')
-    await rag_utils.index_files_from_path(root_path, recursive, required_exts, use_advanced_indexing)
+    required_exts = required_exts.split(';') if required_exts else []
+    await rag_utils.index_files_from_path(
+        root_path=root_path,
+        recursive=recursive,
+        required_exts=required_exts,
+        use_advanced_indexing=use_advanced_indexing
+    )
     return {"message": "Files indexed successfully"}
 
 

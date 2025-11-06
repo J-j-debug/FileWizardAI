@@ -1,1 +1,0 @@
-Ce fichier contient des points dans son nom pour tester la logique de sécurité.

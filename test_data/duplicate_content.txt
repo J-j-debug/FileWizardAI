@@ -1,0 +1,4 @@
+Ceci est un paragraphe unique.
+Ceci est un paragraphe dupliqué.
+Ceci est un paragraphe dupliqué.
+Ceci est un autre paragraphe unique.
