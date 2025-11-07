@@ -27,3 +27,4 @@ backend/env/
 FileWizardAi.db
 chroma_db/
 *.log
+node_modules/

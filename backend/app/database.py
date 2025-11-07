@@ -63,11 +63,22 @@ class SQLiteDB:
     # Notebook file management
     def add_files_to_notebook(self, notebook_id, file_paths):
         try:
-            files_to_add = [(notebook_id, path) for path in file_paths]
-            self.cursor.executemany("INSERT INTO notebook_files (notebook_id, file_path) VALUES (?, ?)", files_to_add)
-            self.conn.commit()
+            with self.conn:
+                # First, ensure all files exist in the files_summary table to satisfy foreign key constraints.
+                # We'll insert them with a placeholder hash and summary.
+                summary_files_to_add = [(path, "dummy_hash", "") for path in file_paths]
+                self.cursor.executemany(
+                    "INSERT OR IGNORE INTO files_summary (file_path, file_hash, summary) VALUES (?, ?, ?)",
+                    summary_files_to_add
+                )
+
+                # Now, link the files to the notebook, ignoring duplicates.
+                files_to_link = [(notebook_id, path) for path in file_paths]
+                self.cursor.executemany("INSERT OR IGNORE INTO notebook_files (notebook_id, file_path) VALUES (?, ?)", files_to_link)
             return True
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
+            # This block might still be useful for catching other unexpected integrity errors.
+            print(f"Database integrity error: {e}")
             return False
 
     def get_files_for_notebook(self, notebook_id):
@@ -94,8 +105,13 @@ class SQLiteDB:
         return bool(file)
 
     def insert_file_summary(self, file_path, file_hash, summary):
-        self.cursor.execute("INSERT OR REPLACE INTO files_summary (file_path, file_hash, summary) VALUES (?, ?, ?)",
-                            (file_path, file_hash, summary))
+        self.cursor.execute("""
+            INSERT INTO files_summary (file_path, file_hash, summary)
+            VALUES (?, ?, ?)
+            ON CONFLICT(file_path) DO UPDATE SET
+                file_hash = excluded.file_hash,
+                summary = excluded.summary
+        """, (file_path, file_hash, summary))
         self.conn.commit()
 
     def get_file_summary(self, file_path):

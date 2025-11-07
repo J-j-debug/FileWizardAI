@@ -1,8 +1,21 @@
 import { Component, HostBinding, Input, QueryList, ViewChildren } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DataService } from './data.service';
 import { HttpParams } from "@angular/common/http";
+
+// Standalone Components
 import { FolderTreeComponent } from './components/folder-tree.component';
-import { NgModel } from '@angular/forms';
+import { SearchFilesComponent } from './components/search-files.component';
+import { LlmSettingsComponent } from './components/llm-settings.component';
+import { ResearchHubComponent } from './components/research-hub.component';
+
+// Angular Material Modules
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 interface ExtensionGroup {
   name: string;
@@ -15,6 +28,20 @@ interface ExtensionGroup {
 
 @Component({
   selector: 'app-root',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    FolderTreeComponent,
+    SearchFilesComponent,
+    LlmSettingsComponent,
+    ResearchHubComponent,
+    MatIconModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCheckboxModule
+  ],
   template: `
     <div class="app-container">
       <button class="theme-toggle" (click)="toggleTheme()">

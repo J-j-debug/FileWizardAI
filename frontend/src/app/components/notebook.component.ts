@@ -13,9 +13,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { HttpParams } from '@angular/common/http';
 
 @Component({
-  selector: 'app-notebook-view',
+  selector: 'app-notebook',
   template: `
-    <div class="notebook-view-container">
+    <div class="notebook-container">
       <button mat-stroked-button (click)="onBack.emit()">
         <mat-icon>arrow_back</mat-icon>
         Back to Notebooks
@@ -100,7 +100,7 @@ import { HttpParams } from '@angular/common/http';
     MatProgressSpinnerModule
   ]
 })
-export class NotebookViewComponent implements OnInit {
+export class NotebookComponent implements OnInit {
   @Input() notebook: any;
   @Output() onBack = new EventEmitter<void>();
 

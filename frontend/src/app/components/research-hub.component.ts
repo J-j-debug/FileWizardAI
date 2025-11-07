@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { NotebookViewComponent } from './notebook-view.component';
+import { NotebookComponent } from './notebook.component';
 
 @Component({
   selector: 'app-research-hub',
@@ -61,7 +61,7 @@ import { NotebookViewComponent } from './notebook-view.component';
     </div>
 
     <ng-template #notebookView>
-      <app-notebook-view [notebook]="selectedNotebook" (onBack)="deselectNotebook()"></app-notebook-view>
+      <app-notebook [notebook]="selectedNotebook" (onBack)="deselectNotebook()"></app-notebook>
     </ng-template>
   `,
   styles: [`
@@ -103,7 +103,7 @@ import { NotebookViewComponent } from './notebook-view.component';
     MatFormFieldModule,
     MatIconModule,
     MatListModule,
-    NotebookViewComponent
+    NotebookComponent
   ]
 })
 export class ResearchHubComponent implements OnInit {

@@ -15,6 +15,11 @@ from .database import SQLiteDB
 from pydantic import BaseModel
 import json
 
+# Helper for path normalization
+def normalize_path(path: str) -> str:
+    # Replace backslashes with forward slashes and remove any trailing slashes
+    return os.path.normpath(path).replace("\\", "/")
+
 # Pydantic models for request bodies
 class NotebookCreate(BaseModel):
     name: str
@@ -83,11 +88,22 @@ async def delete_notebook(notebook_id: int):
     db.delete_notebook(notebook_id)
     return {"message": "Notebook and associated data deleted successfully"}
 
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 @app.post("/notebooks/{notebook_id}/files", status_code=201)
 async def add_files_to_notebook(notebook_id: int, files: NotebookFiles):
-    success = db.add_files_to_notebook(notebook_id, files.file_paths)
+    normalized_paths = [normalize_path(p) for p in files.file_paths]
+    success = db.add_files_to_notebook(notebook_id, normalized_paths)
     if not success:
         raise HTTPException(status_code=400, detail="Error adding files. Ensure file paths are valid and not already in the notebook.")
+
+    for file_path in normalized_paths:
+        logger.info(f"File added to notebook {notebook_id}: {file_path}")
+
     return {"message": "Files added to notebook successfully"}
 
 @app.get("/notebooks/{notebook_id}/files")
@@ -97,7 +113,8 @@ async def get_notebook_files(notebook_id: int):
 
 @app.delete("/notebooks/{notebook_id}/files")
 async def remove_files_from_notebook(notebook_id: int, files: NotebookFiles):
-    db.remove_files_from_notebook(notebook_id, files.file_paths)
+    normalized_paths = [normalize_path(p) for p in files.file_paths]
+    db.remove_files_from_notebook(notebook_id, normalized_paths)
     return {"message": "Files removed from notebook successfully"}
 
 @app.post("/notebooks/{notebook_id}/index")

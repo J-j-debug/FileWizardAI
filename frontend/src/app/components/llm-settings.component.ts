@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DataService } from '../data.service';
 
 interface LLMProvider {
@@ -21,6 +23,8 @@ interface LLMConfig {
 
 @Component({
   selector: 'app-llm-settings',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="llm-settings-container">
       <h2>Configuration LLM</h2>
