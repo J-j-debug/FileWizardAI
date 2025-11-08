@@ -22,6 +22,16 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CustomPrompt } from './models';
 
+
+interface ExtensionGroup {
+  name: string;
+  icon: string;
+  extensions: string[];
+  selected: number;
+  total: number;
+  expanded: boolean;
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,

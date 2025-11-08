@@ -18,7 +18,7 @@ export class DataService {
   }
 
   getDefaultPrompt(): Observable<{ prompt: string }> {
-    return this.http.get<{ prompt: string }>(`${this.baseUrl}/default_prompt`);
+    return this.http.get<{ prompt: string }>(`${this.apiUrl}/default_prompt`);
   }
 
   updateStructure(newStructureBody: any): Observable<any> {
