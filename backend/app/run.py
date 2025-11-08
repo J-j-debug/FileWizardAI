@@ -110,12 +110,12 @@ async def get_dir_summaries(path: str, recursive: bool, required_exts: list):
     return files_summaries
 
 
-async def run(directory_path: str, recursive: bool, required_exts: list):
+async def run(directory_path: str, recursive: bool, required_exts: list, prompt: str = None):
     logger.info("Starting ...")
 
     summaries = await get_dir_summaries(directory_path, recursive, required_exts)
     model = Model()
-    files = await model.create_file_tree_api(summaries)
+    files = await model.create_file_tree_api(summaries, prompt=prompt)
 
     # Recursively create dictionary from file paths
     tree = {}

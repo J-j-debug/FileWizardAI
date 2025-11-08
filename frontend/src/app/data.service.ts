@@ -17,6 +17,10 @@ export class DataService {
     return this.http.get<any>(this.apiUrl + "/get_files", { params: params });
   }
 
+  getDefaultPrompt(): Observable<{ prompt: string }> {
+    return this.http.get<{ prompt: string }>(`${this.baseUrl}/default_prompt`);
+  }
+
   updateStructure(newStructureBody: any): Observable<any> {
     return this.http.post<any>(this.apiUrl + "/update_files", newStructureBody);
   }

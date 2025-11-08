@@ -3,12 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from './data.service';
 import { HttpParams } from "@angular/common/http";
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 // Standalone Components
 import { FolderTreeComponent } from './components/folder-tree.component';
 import { SearchFilesComponent } from './components/search-files.component';
 import { LlmSettingsComponent } from './components/llm-settings.component';
 import { ResearchHubComponent } from './components/research-hub.component';
+import { PromptManagerComponent } from './components/prompt-manager.component';
 
 // Angular Material Modules
 import { MatIconModule } from '@angular/material/icon';
@@ -16,15 +18,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-
-interface ExtensionGroup {
-  name: string;
-  icon: string;
-  extensions: string[];
-  selected: number;
-  total: number;
-  expanded: boolean;
-}
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { CustomPrompt } from './models';
 
 @Component({
   selector: 'app-root',
@@ -36,11 +32,15 @@ interface ExtensionGroup {
     SearchFilesComponent,
     LlmSettingsComponent,
     ResearchHubComponent,
+    PromptManagerComponent,
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatSelectModule,
+    MatTooltipModule,
+    MatDialogModule
   ],
   template: `
     <div class="app-container">
@@ -147,6 +147,18 @@ interface ExtensionGroup {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div class="prompt-section">
+              <mat-form-field appearance="outline">
+                <mat-label>Prompt</mat-label>
+                <mat-select [(ngModel)]="selectedPrompt">
+                  <mat-option *ngFor="let prompt of prompts" [value]="prompt.content">{{ prompt.title }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <button mat-icon-button (click)="openPromptManager()" matTooltip="Manage custom prompts">
+                <mat-icon>settings</mat-icon>
+              </button>
             </div>
 
             <div class="actions-section">
@@ -940,6 +952,16 @@ interface ExtensionGroup {
       border-color: var(--primary);
     }
 
+    .prompt-section {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .prompt-section mat-form-field {
+      flex-grow: 1;
+    }
 
     @media (max-width: 1024px) {
       .content {
@@ -1056,7 +1078,12 @@ export class AppComponent {
   showLLMSettings = false;
   useAdvancedIndexing: boolean = false;
 
-  constructor(private dataService: DataService) {
+  // Prompt Management
+  defaultPrompt: CustomPrompt = { title: 'Default Prompt', content: '' };
+  prompts: CustomPrompt[] = [];
+  selectedPrompt: string = '';
+
+  constructor(private dataService: DataService, public dialog: MatDialog) {
     // Check for saved theme preference
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -1064,6 +1091,43 @@ export class AppComponent {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
     this.updateSelectedCounts();
+    this.loadInitialPrompts();
+  }
+
+  loadInitialPrompts() {
+    this.dataService.getDefaultPrompt().subscribe(response => {
+      this.defaultPrompt.content = response.prompt;
+      this.selectedPrompt = this.defaultPrompt.content;
+      this.loadPrompts(); // Load custom prompts after default is set
+    });
+  }
+
+  loadPrompts() {
+    const savedPrompts = localStorage.getItem('customFileStructurePrompts');
+    let customPrompts: CustomPrompt[] = [];
+    if (savedPrompts) {
+      customPrompts = JSON.parse(savedPrompts);
+    }
+    this.prompts = [this.defaultPrompt, ...customPrompts];
+  }
+
+  openPromptManager() {
+    const dialogRef = this.dialog.open(PromptManagerComponent, {
+      width: '800px',
+      height: '600px',
+      data: {
+        prompts: this.prompts,
+        defaultPromptContent: this.defaultPrompt.content
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // Save the returned custom prompts
+        localStorage.setItem('customFileStructurePrompts', JSON.stringify(result));
+        this.loadPrompts(); // Reload prompts to update the dropdown
+      }
+    });
   }
 
   toggleGroup(group: ExtensionGroup) {
@@ -1112,6 +1176,12 @@ export class AppComponent {
     params = params.set("root_path", this.rootPath)
     params = params.set("recursive", this.isRecursive)
     params = params.set("required_exts", this.filesExts.join(';'))
+
+    // Only add the prompt if it's not the default one
+    if (this.selectedPrompt !== this.defaultPrompt.content) {
+      params = params.set("prompt", this.selectedPrompt);
+    }
+
     this.dataService.getFormattedFiles(params).subscribe((data) => {
       this.original_files = data
       this.original_files.items = this.original_files.items.map((item: any) => ({ src_path: item.src_path.replaceAll("\\\\", "/").replaceAll("\\", "/"), dst_path: item.dst_path }))
