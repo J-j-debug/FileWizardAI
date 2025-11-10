@@ -20,6 +20,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSliderModule } from '@angular/material/slider';
 import { CustomPrompt } from './models';
 
 
@@ -50,7 +51,8 @@ interface ExtensionGroup {
     MatCheckboxModule,
     MatSelectModule,
     MatTooltipModule,
-    MatDialogModule
+    MatDialogModule,
+    MatSliderModule
   ],
   template: `
     <div class="app-container">
@@ -157,6 +159,30 @@ interface ExtensionGroup {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div class="summary-strategy-section">
+                <h4>Stratégie de Résumé</h4>
+                <div class="strategy-controls">
+                    <mat-form-field appearance="outline">
+                        <mat-label>Stratégie</mat-label>
+                        <mat-select [(ngModel)]="summaryStrategy">
+                            <mat-option value="fast">Rapide (Début du document)</mat-option>
+                            <mat-option value="balanced" [disabled]="true">Équilibré (Début + Fin)</mat-option>
+                            <mat-option value="full" [disabled]="true">Complet (Document entier)</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <div class="token-slider">
+                        <label>Tokens: {{ tokenCount }}</label>
+                        <mat-slider min="1024" max="16384" step="1024" discrete="true">
+                            <input matSliderThumb [(ngModel)]="tokenCount">
+                        </mat-slider>
+                    </div>
+                </div>
+                <p class="help-text">Unité en tokens (environ 75 mots pour 100 tokens).</p>
+                 <p *ngIf="summaryStrategy === 'full'" class="warning-text">
+                    Attention : ce mode analyse le document en entier, ce qui peut être long et consommer plus de crédits API.
+                </p>
             </div>
 
             <div class="prompt-section">
@@ -973,6 +999,34 @@ interface ExtensionGroup {
       flex-grow: 1;
     }
 
+    .summary-strategy-section {
+      margin-bottom: 2rem;
+    }
+
+    .summary-strategy-section h4 {
+      margin-bottom: 1rem;
+    }
+
+    .strategy-controls {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .token-slider {
+      flex-grow: 1;
+    }
+
+    .help-text {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .warning-text {
+        font-size: 0.8rem;
+        color: orange;
+    }
+
     @media (max-width: 1024px) {
       .content {
         grid-template-columns: 1fr;
@@ -1093,6 +1147,10 @@ export class AppComponent {
   prompts: CustomPrompt[] = [];
   selectedPrompt: string = '';
 
+  // Summary Strategy
+  summaryStrategy: string = 'fast';
+  tokenCount: number = 6144;
+
   constructor(private dataService: DataService, public dialog: MatDialog) {
     // Check for saved theme preference
     const savedTheme = localStorage.getItem('theme');
@@ -1186,6 +1244,7 @@ export class AppComponent {
     params = params.set("root_path", this.rootPath)
     params = params.set("recursive", this.isRecursive)
     params = params.set("required_exts", this.filesExts.join(';'))
+    params = params.set("token_count", this.tokenCount.toString());
 
     // Only add the prompt if it's not the default one
     if (this.selectedPrompt !== this.defaultPrompt.content) {

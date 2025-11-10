@@ -193,204 +193,33 @@ class Model:
             file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
         return file_tree
 
-FILE_STRUCTURE_DEFAULT_PROMPT = """
-You will be provided with list of source files and a summary of their contents.
-For each file,propose a new path and filename, using a directory structure that optimally organizes the files using known conventions and best practices.
-Follow good naming conventions. Here are a few guidelines
-- Think about your files : What related files are you working with?
-- Identify metadata (for example, date, sample, experiment) : What information is needed to easily locate a specific file?
-- Abbreviate or encode metadata
-- Use versioning : Are you maintaining different versions of the same file?
-- Think about how you will search for your files : What comes first?
-- Deliberately separate metadata elements : Avoid spaces or special characters in your file names
-If the file is already named well or matches a known convention, set the destination path to the same as the source path.
-
-Your response must be a JSON object with the following schema, dont add any extra text except the json:
-```json
-{
-    "files": [
-        {
-            "src_path": "original file path",
-            "dst_path": "new file path under proposed directory structure with proposed file name"
-        }
-    ]
-}
-```
-""".strip()
-
-class Model:
-    def __init__(self):
-        self.settings = Settings()
-        self.TEXT_API_END_POINT = self.settings.TEXT_API_END_POINT
-        self.TEXT_MODEL_NAME = self.settings.TEXT_MODEL_NAME
-        self.TEXT_API_KEYS = self.settings.TEXT_API_KEYS
-        self.IMAGE_API_END_POINT = self.settings.IMAGE_API_END_POINT
-        self.IMAGE_MODEL_NAME = self.settings.IMAGE_MODEL_NAME
-        self.IMAGE_API_KEYS = self.settings.IMAGE_API_KEYS
-        self.text_keys_count = len(self.TEXT_API_KEYS)
-        self.image_keys_count = len(self.IMAGE_API_KEYS)
-        self.MAX_TOKEN_SIZE = 4000
-        self.cnt_txt = 0
-        self.cnt_img = 0
-        # Lazy init: crée les clients seulement si des clés existent
-        self.async_text_clients = []
-        self.async_image_clients = []
-        if self.text_keys_count:
-            self.async_text_clients = [AsyncOpenAI(base_url=self.TEXT_API_END_POINT, api_key=k)
-                                       for k in self.TEXT_API_KEYS]
-        if self.image_keys_count:
-            self.async_image_clients = [AsyncOpenAI(base_url=self.IMAGE_API_END_POINT, api_key=k)
-                                        for k in self.IMAGE_API_KEYS]
-
-    async def summarize_image_api(self, image_path):
-        prompt = """
-        Describe this image in the most concise way possible, capturing only the essential elements and details.
-        Aim for a very brief yet accurate summary.
-        """
-        attempt = 0
-        summary = ""
-        # Huggingface API doesn't support image completions
-        if "huggingface.co" in self.IMAGE_API_END_POINT.lower():
-            # To avoid rate_limit_exceeded or api error
-            endpoint_url = self.IMAGE_API_END_POINT.replace("v1", "models") + "/" + self.IMAGE_MODEL_NAME
-            while attempt < 5:
-                try:
-                    headers = {"Authorization": f"Bearer {self.IMAGE_API_KEYS[self.cnt_img % self.image_keys_count]}"}
-                    with open(image_path, "rb") as f:
-                        data = f.read()
-                        response = requests.post(endpoint_url, headers=headers, data=data)
-                    summary = response.json()[0]["generated_text"]
-                    break
-                except Exception as e:
-                    logger.error("Error {}".format(e))
-                    attempt += 1
-                    self.cnt_img += 1
-        else:
-            with open(image_path, "rb") as image_file:
-                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
-            # To avoid rate_limit_exceeded or api error
-            while attempt < 5:
-                try:
-                    chat_completion = await self.async_image_clients[
-                        self.cnt_img % self.image_keys_count].chat.completions.create(
-                        model=self.IMAGE_MODEL_NAME,
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": prompt},
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": f"data:image/jpeg;base64,{base64_image}"
-                                        },
-                                    },
-                                ],
-                            }
-                        ],
-                        timeout=None,
-                        temperature=0,
-                    )
-                    summary = chat_completion.choices[0].message.content
-                    break
-                except Exception as e:
-                    logger.error("Error {}".format(e))
-                    attempt += 1
-                    self.cnt_img += 1
-        return summary
-
-    async def summarize_document_api(self, doc_text):
-        prompt = """
-        You will be provided with the contents of a file. Provide a summary of the contents.
-        The purpose of the summary is to organize files based on their content.
-        To this end provide a concise but informative summary. Make the summary as specific to the file as possible.
-        It is very important that you only provide the final output without any additional comments or remarks.
-        """.strip()
-        attempt = 0
-        summary = ""
-        # To avoid rate_limit_exceeded or api error
-        while attempt < 5:
-            try:
-                chat_completion = await self.async_text_clients[
-                    self.cnt_txt % self.text_keys_count].chat.completions.create(
-                    model=self.TEXT_MODEL_NAME,
-                    messages=[
-                        {"role": "system", "content": prompt},
-                        {"role": "user", "content": doc_text},
-                    ],
-                    stream=False,
-                    temperature=0,
-                    timeout=None,
-                )
-                summary = chat_completion.choices[0].message.content
-                break
-            except Exception as e:
-                logger.error("Error {}".format(e))
-                attempt += 1
-                self.cnt_txt += 1
-        return summary
-
-    async def generate_rag_response_api(self, context: str, query: str, custom_prompt_template: str = None):
-        if custom_prompt_template:
-            # Use the custom template provided by the user
-            prompt = custom_prompt_template.format(query=query, context=context)
-        else:
-            # Use the default, direct-extraction prompt
-            prompt = f"""
-            You are a search assistant. Your task is to find and extract the most relevant passages from the provided text to answer the user's query.
-            Do not synthesize or generate new answers. Your response should consist only of direct quotes from the text.
-            If no relevant passages are found, simply state that.
-
-            **Query:** {query}
-
-            **Context:**
-            ---
-            {context}
-            ---
-
-            **Citations:**
-            """.strip()
-
-        attempt = 0
-        summary = ""
-        # To avoid rate_limit_exceeded or api error
-        while attempt < 5:
-            try:
-                chat_completion = await self.async_text_clients[
-                    self.cnt_txt % self.text_keys_count].chat.completions.create(
-                    model=self.TEXT_MODEL_NAME,
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant that answers questions based on the provided context."},
-                        {"role": "user", "content": prompt},
-                    ],
-                    stream=False,
-                    temperature=0,
-                    timeout=None,
-                )
-                summary = chat_completion.choices[0].message.content
-                break
-            except Exception as e:
-                logger.error("Error {}".format(e))
-                attempt += 1
-                self.cnt_txt += 1
-        return summary
-
-    async def create_file_tree_api(self, summaries: list, prompt: str = None):
-        tmp: list = []
-        file_tree: list = []
-        for summary in summaries:
-            # it's better to use tiktoken here
-            if (sys.getsizeof(json.dumps(tmp)) + sys.getsizeof(json.dumps(summary))) / 4 >= self.MAX_TOKEN_SIZE:
-                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
-                tmp = []
-            else:
-                tmp.append(summary)
-        if len(tmp) > 0:
-            file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
-        return file_tree
-
     async def create_file_tree_api_chunk(self, summaries: list, prompt: str = None):
-        file_prompt = prompt if prompt else FILE_STRUCTURE_DEFAULT_PROMPT
+        default_prompt = """
+        You will be provided with list of source files and a summary of their contents.
+        For each file,propose a new path and filename, using a directory structure that optimally organizes the files using known conventions and best practices.
+        Follow good naming conventions. Here are a few guidelines
+        - Think about your files : What related files are you working with?
+        - Identify metadata (for example, date, sample, experiment) : What information is needed to easily locate a specific file?
+        - Abbreviate or encode metadata
+        - Use versioning : Are you maintaining different versions of the same file?
+        - Think about how you will search for your files : What comes first?
+        - Deliberately separate metadata elements : Avoid spaces or special characters in your file names
+        If the file is already named well or matches a known convention, set the destination path to the same as the source path.
+
+        Your response must be a JSON object with the following schema, dont add any extra text except the json:
+        ```json
+        {
+            "files": [
+                {
+                    "src_path": "original file path",
+                    "dst_path": "new file path under proposed directory structure with proposed file name"
+                }
+            ]
+        }
+        ```
+        """.strip()
+
+        file_prompt = prompt if prompt else default_prompt
         attempt = 0
         file_tree = []  # Initialize as empty list
         while attempt < 10:

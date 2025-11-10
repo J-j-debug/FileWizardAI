@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .run import run, update_file
 from . import rag_utils
-from .settings import FILE_STRUCTURE_DEFAULT_PROMPT
 import os
 import subprocess
 import platform
@@ -146,17 +145,22 @@ async def search_in_notebook(notebook_id: int, query: str, use_advanced_indexing
         raise HTTPException(status_code=404, detail=f"Could not find collection for notebook {notebook_id}. Have you indexed any files? Error: {e}")
 
 
+from .settings import Model
+
 @app.get("/default_prompt")
 async def get_default_prompt():
-    return {"prompt": FILE_STRUCTURE_DEFAULT_PROMPT}
-
+    from .settings import Model
+    # This is not the cleanest way, but it's safe from import errors.
+    # We get the default prompt string directly from the method's defaults.
+    default_prompt = Model.create_file_tree_api_chunk.__defaults__[0]
+    return {"prompt": default_prompt}
 
 @app.get("/get_files")
-async def get_files(root_path: str, recursive: bool, required_exts: str, prompt: str = None):
+async def get_files(root_path: str, recursive: bool, required_exts: str):
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
     required_exts = required_exts.split(';')
-    files = await run(root_path, recursive, required_exts, prompt=prompt)
+    files = await run(root_path, recursive, required_exts)
     return {
         "root_path": root_path,
         "items": files
