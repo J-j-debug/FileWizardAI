@@ -104,6 +104,7 @@ class Model:
         return summary
 
     async def summarize_document_api(self, doc_text):
+        logger.info(f"Sending {len(doc_text)} characters to LLM for summary.")
         prompt = """
         You will be provided with the contents of a file. Provide a summary of the contents. 
         The purpose of the summary is to organize files based on their content. 

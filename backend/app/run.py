@@ -110,8 +110,9 @@ async def get_dir_summaries(path: str, recursive: bool, required_exts: list, tok
     return files_summaries
 
 
-async def run(directory_path: str, recursive: bool, required_exts: list, prompt: str = None, token_count: int = 6144):
+async def run(directory_path: str, recursive: bool, required_exts: list, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast'):
     logger.info("Starting ...")
+    logger.info(f"Summarization strategy: {summary_strategy}, Token count: {token_count}")
 
     summaries = await get_dir_summaries(directory_path, recursive, required_exts, token_count=token_count)
     model = Model()

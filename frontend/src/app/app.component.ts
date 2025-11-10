@@ -1245,6 +1245,7 @@ export class AppComponent {
     params = params.set("recursive", this.isRecursive)
     params = params.set("required_exts", this.filesExts.join(';'))
     params = params.set("token_count", this.tokenCount.toString());
+    params = params.set("summary_strategy", this.summaryStrategy);
 
     // Only add the prompt if it's not the default one
     if (this.selectedPrompt !== this.defaultPrompt.content) {
