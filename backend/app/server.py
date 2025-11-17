@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .run import run, update_file
 from . import rag_utils
+from . import deep_analysis
 import os
 import subprocess
 import platform
@@ -145,22 +146,61 @@ async def search_in_notebook(notebook_id: int, query: str, use_advanced_indexing
         raise HTTPException(status_code=404, detail=f"Could not find collection for notebook {notebook_id}. Have you indexed any files? Error: {e}")
 
 
-from .settings import Model
+# --- Deep Analysis Endpoints ---
 
-@app.get("/default_prompt")
-async def get_default_prompt():
-    from .settings import Model
-    # This is not the cleanest way, but it's safe from import errors.
-    # We get the default prompt string directly from the method's defaults.
-    default_prompt = Model.create_file_tree_api_chunk.__defaults__[0]
-    return {"prompt": default_prompt}
+class AnalysisSchema(BaseModel):
+    name: str
+    schema_data: str  # JSON string
+
+class AnalysisRunRequest(BaseModel):
+    schema_id: int
+    root_path: str
+    recursive: bool
+    required_exts: str
+    token_count: int
+    summary_strategy: str
+
+@app.post("/analysis_schemas", status_code=201)
+async def create_analysis_schema(schema: AnalysisSchema):
+    schema_id = db.create_analysis_schema(schema.name, schema.schema_data)
+    if schema_id is None:
+        raise HTTPException(status_code=409, detail=f"A schema with the name '{schema.name}' already exists.")
+    return {"id": schema_id, "name": schema.name, "schema_data": schema.schema_data}
+
+@app.get("/analysis_schemas")
+async def get_analysis_schemas():
+    schemas = db.get_analysis_schemas()
+    return [{"id": s[0], "name": s[1], "schema_data": s[2]} for s in schemas]
+
+@app.post("/run_analysis")
+async def run_analysis(request: AnalysisRunRequest):
+    if not os.path.exists(request.root_path):
+        return HTTPException(status_code=404, detail=f"Path doesn't exist: {request.root_path}")
+
+    # This will be a long-running task, so we run it in the background
+    asyncio.create_task(deep_analysis.execute_analysis(
+        schema_id=request.schema_id,
+        root_path=request.root_path,
+        recursive=request.recursive,
+        required_exts=request.required_exts.split(';') if request.required_exts else [],
+        strategy=request.summary_strategy,
+        token_count=request.token_count
+    ))
+
+    return {"message": "Deep analysis has been started in the background."}
+
+@app.get("/analysis_results/{schema_id}")
+async def get_analysis_results(schema_id: int):
+    results = db.get_analysis_results(schema_id)
+    return [{"file_path": r[0], "results": json.loads(r[1]), "timestamp": r[2]} for r in results]
+
 
 @app.get("/get_files")
-async def get_files(root_path: str, recursive: bool, required_exts: str, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast'):
+async def get_files(root_path: str, recursive: bool, required_exts: str):
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
     required_exts = required_exts.split(';')
-    files = await run(root_path, recursive, required_exts, prompt=prompt, token_count=token_count, summary_strategy=summary_strategy)
+    files = await run(root_path, recursive, required_exts)
     return {
         "root_path": root_path,
         "items": files

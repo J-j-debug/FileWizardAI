@@ -33,6 +33,30 @@ class SQLiteDB:
         )
         """
         self.cursor.execute(create_notebook_files_table_query)
+
+        # Create analysis_schemas table
+        create_analysis_schemas_table_query = """
+        CREATE TABLE IF NOT EXISTS analysis_schemas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            schema_data TEXT NOT NULL
+        )
+        """
+        self.cursor.execute(create_analysis_schemas_table_query)
+
+        # Create analysis_results table
+        create_analysis_results_table_query = """
+        CREATE TABLE IF NOT EXISTS analysis_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            schema_id INTEGER,
+            file_path TEXT,
+            results TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (schema_id) REFERENCES analysis_schemas (id) ON DELETE CASCADE,
+            FOREIGN KEY (file_path) REFERENCES files_summary (file_path) ON DELETE CASCADE
+        )
+        """
+        self.cursor.execute(create_analysis_results_table_query)
         self.conn.commit()
 
     # Notebook CRUD methods
@@ -90,6 +114,39 @@ class SQLiteDB:
         files_to_remove = [(notebook_id, path) for path in file_paths]
         self.cursor.executemany("DELETE FROM notebook_files WHERE notebook_id = ? AND file_path = ?", files_to_remove)
         self.conn.commit()
+
+    # Analysis Schema methods
+    def create_analysis_schema(self, name, schema_data):
+        try:
+            self.cursor.execute("INSERT INTO analysis_schemas (name, schema_data) VALUES (?, ?)", (name, schema_data))
+            self.conn.commit()
+            return self.cursor.lastrowid
+        except sqlite3.IntegrityError:
+            return None
+
+    def get_analysis_schemas(self):
+        self.cursor.execute("SELECT id, name, schema_data FROM analysis_schemas")
+        return self.cursor.fetchall()
+
+    def get_analysis_schema(self, schema_id):
+        self.cursor.execute("SELECT id, name, schema_data FROM analysis_schemas WHERE id = ?", (schema_id,))
+        return self.cursor.fetchone()
+
+    # Analysis Result methods
+    def save_analysis_result(self, schema_id, file_path, results):
+        self.cursor.execute(
+            "INSERT INTO analysis_results (schema_id, file_path, results) VALUES (?, ?, ?)",
+            (schema_id, file_path, results)
+        )
+        self.conn.commit()
+
+    def get_analysis_results(self, schema_id):
+        self.cursor.execute(
+            "SELECT file_path, results, timestamp FROM analysis_results WHERE schema_id = ?",
+            (schema_id,)
+        )
+        return self.cursor.fetchall()
+
 
     # Existing methods for files_summary
     def select(self, table_name, where_clause=None):
