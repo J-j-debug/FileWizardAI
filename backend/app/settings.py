@@ -218,8 +218,7 @@ class Model:
             file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
         return file_tree
 
-    async def create_file_tree_api_chunk(self, summaries: list, prompt: str = None):
-        default_prompt = """
+    async def create_file_tree_api_chunk(self, summaries: list, prompt: str = """
         You will be provided with list of source files and a summary of their contents.
         For each file,propose a new path and filename, using a directory structure that optimally organizes the files using known conventions and best practices.
         Follow good naming conventions. Here are a few guidelines
@@ -242,9 +241,9 @@ class Model:
             ]
         }
         ```
-        """.strip()
+        """.strip()):
 
-        file_prompt = prompt if prompt else default_prompt
+        file_prompt = prompt
         attempt = 0
         file_tree = []  # Initialize as empty list
         while attempt < 10:

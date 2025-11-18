@@ -192,7 +192,7 @@ interface ExtensionGroup {
                   <mat-option *ngFor="let prompt of prompts" [value]="prompt.content">{{ prompt.title }}</mat-option>
                 </mat-select>
               </mat-form-field>
-              <button mat-icon-button (click)="openPromptManager()" matTooltip="Manage custom prompts">
+              <button mat-icon-button (click)="openPromptManager()" matTooltip="Manage custom prompts" [disabled]="!defaultPrompt.content">
                 <mat-icon>settings</mat-icon>
               </button>
             </div>
