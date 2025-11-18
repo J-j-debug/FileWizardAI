@@ -195,12 +195,22 @@ async def get_analysis_results(schema_id: int):
     return [{"file_path": r[0], "results": json.loads(r[1]), "timestamp": r[2]} for r in results]
 
 
+from .settings import Model
+
+@app.get("/default_prompt")
+async def get_default_prompt():
+    from .settings import Model
+    # This is not the cleanest way, but it's safe from import errors.
+    # We get the default prompt string directly from the method's defaults.
+    default_prompt = Model.create_file_tree_api_chunk.__defaults__[0]
+    return {"prompt": default_prompt}
+
 @app.get("/get_files")
-async def get_files(root_path: str, recursive: bool, required_exts: str):
+async def get_files(root_path: str, recursive: bool, required_exts: str, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast'):
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
     required_exts = required_exts.split(';')
-    files = await run(root_path, recursive, required_exts)
+    files = await run(root_path, recursive, required_exts, prompt=prompt, token_count=token_count, summary_strategy=summary_strategy)
     return {
         "root_path": root_path,
         "items": files

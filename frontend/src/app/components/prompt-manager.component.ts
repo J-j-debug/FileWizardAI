@@ -1,21 +1,14 @@
-
 import { Component, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
 import { CustomPrompt } from '../models';
-
-export interface PromptManagerData {
-  prompts: CustomPrompt[];
-  defaultPromptContent: string;
-}
 
 @Component({
   selector: 'app-prompt-manager',
@@ -27,58 +20,59 @@ export interface PromptManagerData {
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule,
     MatListModule,
+    MatIconModule,
     MatTooltipModule
   ],
   template: `
     <div class="prompt-manager-container">
-      <h2 mat-dialog-title>Gérer les Prompts Personnalisés</h2>
-      <mat-dialog-content class="dialog-content">
-        <div class="prompts-list-section">
-          <h3>Prompts Sauvegardés</h3>
-          <mat-list>
-            <mat-list-item *ngFor="let prompt of customPrompts; let i = index">
-              <span matListItemTitle>{{ prompt.title }}</span>
-              <div matListItemMeta>
-                <button mat-icon-button (click)="editPrompt(i)" matTooltip="Modifier le prompt">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button color="warn" (click)="deletePrompt(i)" matTooltip="Supprimer le prompt">
-                  <mat-icon>delete</mat-icon>
-                </button>
+      <h1 mat-dialog-title>Gestionnaire de Prompts Personnalisés</h1>
+      <div mat-dialog-content class="dialog-content">
+        <div class="prompts-list">
+          <mat-selection-list #promptList [multiple]="false" (selectionChange)="onPromptSelected($event)">
+            <mat-list-option *ngFor="let prompt of prompts; let i = index" [value]="prompt" [selected]="prompt === selectedPrompt">
+              <div class="prompt-item">
+                <span class="prompt-title">{{ prompt.title }}</span>
+                <div class="prompt-actions">
+                  <button mat-icon-button (click)="editPrompt(prompt, $event)" [disabled]="isDefaultPrompt(prompt)" matTooltip="Modifier le prompt">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="deletePrompt(prompt, $event)" [disabled]="isDefaultPrompt(prompt)" color="warn" matTooltip="Supprimer le prompt">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
               </div>
-            </mat-list-item>
-          </mat-list>
-          <p *ngIf="customPrompts.length === 0" class="no-prompts">Aucun prompt personnalisé.</p>
+            </mat-list-option>
+          </mat-selection-list>
         </div>
-        <div class="prompt-edit-section">
-          <h3>{{ editingIndex === null ? 'Créer un nouveau prompt' : 'Modifier le prompt' }}</h3>
+        <div class="prompt-editor">
           <mat-form-field appearance="outline">
-            <mat-label>Titre</mat-label>
-            <input matInput [(ngModel)]="currentPrompt.title" placeholder="Ex: Thèse, Travail, etc.">
+            <mat-label>Titre du Prompt</mat-label>
+            <input matInput [(ngModel)]="editablePrompt.title" placeholder="Ex: Résumé pour un rapport" [disabled]="isDefaultPrompt(selectedPrompt)">
           </mat-form-field>
-          <mat-form-field appearance="outline" class="prompt-content-field">
+          <mat-form-field appearance="outline">
             <mat-label>Contenu du Prompt</mat-label>
-            <textarea matInput cdkTextareaAutosize cdkAutosizeMinRows="8" [(ngModel)]="currentPrompt.content"></textarea>
+            <textarea matInput cdkTextareaAutosize cdkAutosizeMinRows="5" [(ngModel)]="editablePrompt.content" [disabled]="isDefaultPrompt(selectedPrompt)"></textarea>
           </mat-form-field>
-          <div class="edit-actions">
-            <button mat-stroked-button (click)="startNewPrompt()">
-                <mat-icon>add</mat-icon> Nouveau
-            </button>
-             <button mat-stroked-button (click)="restoreDefault()" matTooltip="Copier le contenu du prompt par défaut dans l'éditeur">
-                <mat-icon>restart_alt</mat-icon> Rétablir par défaut
-            </button>
-          </div>
+           <p *ngIf="isDefaultPrompt(selectedPrompt)" class="default-prompt-info">
+            <mat-icon>info</mat-icon>
+            Le prompt par défaut ne peut pas être modifié. Cliquez sur 'Créer un nouveau prompt' pour commencer.
+          </p>
         </div>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-button (click)="onCancel()">Annuler</button>
-        <button mat-flat-button color="primary" (click)="onSave()" [disabled]="!currentPrompt.title || !currentPrompt.content">
-            <mat-icon>save</mat-icon>
-            {{ editingIndex === null ? 'Sauvegarder' : 'Mettre à jour' }}
+      </div>
+      <div mat-dialog-actions class="dialog-actions">
+        <button mat-stroked-button (click)="createNewPrompt()">
+          <mat-icon>add</mat-icon>
+          Créer un nouveau prompt
         </button>
-      </mat-dialog-actions>
+        <div>
+          <button mat-button (click)="onCancel()">Annuler</button>
+          <button mat-flat-button color="primary" (click)="onSave()" [disabled]="!isChanged() || isDefaultPrompt(selectedPrompt)">
+            <mat-icon>save</mat-icon>
+            Sauvegarder les changements
+          </button>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -86,90 +80,130 @@ export interface PromptManagerData {
       display: flex;
       flex-direction: column;
       height: 100%;
-      max-height: 80vh;
     }
     .dialog-content {
+      flex-grow: 1;
       display: grid;
       grid-template-columns: 1fr 2fr;
-      gap: 2rem;
-      padding: 1rem;
+      gap: 24px;
       overflow-y: auto;
     }
-    .prompts-list-section {
-      border-right: 1px solid var(--border);
-      padding-right: 2rem;
+    .prompts-list {
+      border-right: 1px solid #e0e0e0;
+      padding-right: 16px;
     }
-    .prompt-edit-section {
+    .prompt-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+    .prompt-title {
+      flex-grow: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .prompt-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .prompt-editor {
       display: flex;
       flex-direction: column;
     }
-    .prompt-content-field {
-      flex-grow: 1;
-    }
-    .edit-actions {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 1rem;
-    }
-    mat-form-field {
+    .prompt-editor mat-form-field {
       width: 100%;
+      margin-bottom: 16px;
     }
-    .no-prompts {
-      color: var(--text-secondary);
-      font-style: italic;
+    .dialog-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+    }
+    .default-prompt-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9em;
+      color: #666;
+      background-color: #f5f5f5;
+      padding: 8px;
+      border-radius: 4px;
     }
   `]
 })
 export class PromptManagerComponent {
-  customPrompts: CustomPrompt[];
-  currentPrompt: CustomPrompt = { title: '', content: '' };
-  editingIndex: number | null = null;
-  defaultPromptContent: string;
+  prompts: CustomPrompt[];
+  selectedPrompt: CustomPrompt | null = null;
+  editablePrompt: CustomPrompt = { title: '', content: '' };
+  originalPrompt: CustomPrompt | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<PromptManagerComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: PromptManagerData
+    @Inject(MAT_DIALOG_DATA) public data: any
   ) {
-    // We only manage non-default prompts
-    this.customPrompts = data.prompts.filter(p => p.title !== 'Default Prompt');
-    this.defaultPromptContent = data.defaultPromptContent;
-    this.startNewPrompt();
+    this.prompts = [...data.prompts]; // Create a local copy
   }
 
-  startNewPrompt(): void {
-    this.editingIndex = null;
-    this.currentPrompt = { title: '', content: this.defaultPromptContent };
-  }
-
-  editPrompt(index: number): void {
-    this.editingIndex = index;
-    // Create a copy for editing to not modify the original until save
-    this.currentPrompt = { ...this.customPrompts[index] };
-  }
-
-  deletePrompt(index: number): void {
-    this.customPrompts.splice(index, 1);
-    if (this.editingIndex === index) {
-      this.startNewPrompt();
+  onPromptSelected(event: any): void {
+    this.selectedPrompt = event.options[0].value;
+    if (this.selectedPrompt) {
+      this.originalPrompt = JSON.parse(JSON.stringify(this.selectedPrompt)); // Deep copy
+      this.editablePrompt = { ...this.selectedPrompt };
     }
   }
 
-  restoreDefault(): void {
-    this.currentPrompt.content = this.defaultPromptContent;
+  isDefaultPrompt(prompt: CustomPrompt | null): boolean {
+    return prompt?.content === this.data.defaultPromptContent;
+  }
+
+  isChanged(): boolean {
+    if (!this.selectedPrompt || !this.originalPrompt) return false;
+    return this.editablePrompt.title !== this.originalPrompt.title || this.editablePrompt.content !== this.originalPrompt.content;
+  }
+
+  editPrompt(prompt: CustomPrompt, event: MouseEvent): void {
+    event.stopPropagation();
+    this.selectedPrompt = prompt;
+    this.originalPrompt = JSON.parse(JSON.stringify(this.selectedPrompt));
+    this.editablePrompt = { ...this.selectedPrompt };
+  }
+
+  deletePrompt(promptToDelete: CustomPrompt, event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.isDefaultPrompt(promptToDelete)) return;
+    this.prompts = this.prompts.filter(p => p !== promptToDelete);
+    if (this.selectedPrompt === promptToDelete) {
+      this.selectedPrompt = null;
+      this.editablePrompt = { title: '', content: '' };
+    }
+    // Save immediately on delete
+    this.dialogRef.close(this.prompts.filter(p => !this.isDefaultPrompt(p)));
+  }
+
+  createNewPrompt(): void {
+    const newPrompt: CustomPrompt = { title: 'Nouveau Prompt', content: this.data.defaultPromptContent };
+    this.prompts.push(newPrompt);
+    this.selectedPrompt = newPrompt;
+    this.originalPrompt = JSON.parse(JSON.stringify(this.selectedPrompt));
+    this.editablePrompt = { ...this.selectedPrompt };
+  }
+
+  onSave(): void {
+    if (this.selectedPrompt && this.isChanged()) {
+      const index = this.prompts.findIndex(p => p === this.selectedPrompt);
+      if (index > -1) {
+        this.prompts[index] = this.editablePrompt;
+      }
+    }
+    // Return only custom prompts
+    this.dialogRef.close(this.prompts.filter(p => p.content !== this.data.defaultPromptContent));
   }
 
   onCancel(): void {
     this.dialogRef.close();
-  }
-
-  onSave(): void {
-    if (this.editingIndex === null) {
-      // Add new prompt
-      this.customPrompts.push(this.currentPrompt);
-    } else {
-      // Update existing prompt
-      this.customPrompts[this.editingIndex] = this.currentPrompt;
-    }
-    this.dialogRef.close(this.customPrompts);
   }
 }

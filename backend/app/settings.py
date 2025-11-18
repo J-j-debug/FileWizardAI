@@ -204,22 +204,22 @@ class Model:
                 time.sleep(2)
         raise Exception("Failed to get a valid JSON response from the LLM after multiple attempts.")
 
-    async def create_file_tree_api(self, summaries: list):
+    async def create_file_tree_api(self, summaries: list, prompt: str = None):
         tmp: list = []
         file_tree: list = []
         for summary in summaries:
             # it's better to use tiktoken here
             if (sys.getsizeof(json.dumps(tmp)) + sys.getsizeof(json.dumps(summary))) / 4 >= self.MAX_TOKEN_SIZE:
-                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp)
+                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
                 tmp = []
             else:
                 tmp.append(summary)
         if len(tmp) > 0:
-            file_tree = file_tree + await self.create_file_tree_api_chunk(tmp)
+            file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
         return file_tree
 
-    async def create_file_tree_api_chunk(self, summaries: list):
-        file_prompt = """
+    async def create_file_tree_api_chunk(self, summaries: list, prompt: str = None):
+        default_prompt = """
         You will be provided with list of source files and a summary of their contents.
         For each file,propose a new path and filename, using a directory structure that optimally organizes the files using known conventions and best practices.
         Follow good naming conventions. Here are a few guidelines
@@ -243,6 +243,8 @@ class Model:
         }
         ```
         """.strip()
+
+        file_prompt = prompt if prompt else default_prompt
         attempt = 0
         file_tree = []  # Initialize as empty list
         while attempt < 10:

@@ -74,14 +74,14 @@ async def remove_deleted_files():
     db.delete_records(deleted_file_paths)
 
 
-def load_documents(path: str, recursive: bool, required_exts: list):
+def load_documents(path: str, recursive: bool, required_exts: list, token_count: int = 6144):
     reader = SimpleDirectoryReader(
         input_dir=path,
         recursive=recursive,
         required_exts=required_exts,
         errors='ignore'
     )
-    splitter = TokenTextSplitter(chunk_size=6144)
+    splitter = TokenTextSplitter(chunk_size=token_count)
     documents = []
     for docs in reader.iter_data():
         # By default, llama index split files into multiple "documents"
@@ -97,8 +97,8 @@ def load_documents(path: str, recursive: bool, required_exts: list):
     return documents
 
 
-async def get_dir_summaries(path: str, recursive: bool, required_exts: list):
-    doc_dicts = load_documents(path, recursive, required_exts)
+async def get_dir_summaries(path: str, recursive: bool, required_exts: list, token_count: int = 6144):
+    doc_dicts = load_documents(path, recursive, required_exts, token_count=token_count)
 
     await remove_deleted_files()
     files_summaries = await get_summaries(doc_dicts)
@@ -110,12 +110,13 @@ async def get_dir_summaries(path: str, recursive: bool, required_exts: list):
     return files_summaries
 
 
-async def run(directory_path: str, recursive: bool, required_exts: list):
+async def run(directory_path: str, recursive: bool, required_exts: list, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast'):
     logger.info("Starting ...")
+    logger.info(f"Summarization strategy: {summary_strategy}, Token count: {token_count}")
 
-    summaries = await get_dir_summaries(directory_path, recursive, required_exts)
+    summaries = await get_dir_summaries(directory_path, recursive, required_exts, token_count=token_count)
     model = Model()
-    files = await model.create_file_tree_api(summaries)
+    files = await model.create_file_tree_api(summaries, prompt=prompt)
 
     # Recursively create dictionary from file paths
     tree = {}
