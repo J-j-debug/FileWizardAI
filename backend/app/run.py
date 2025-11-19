@@ -199,6 +199,11 @@ async def run_deep_analysis(root_path: str, recursive: bool, required_exts: list
             for i, q_data in enumerate(schema_data['complementary_questions']):
                 file_results["questions"][q_data['question']] = questions_responses[i]
 
+            # Ensure the file exists in the summary table to satisfy the foreign key constraint.
+            # We use a dummy hash and summary because this table is not the primary source for deep analysis results.
+            dummy_hash = get_file_hash(file_path)
+            db.insert_file_summary(file_path, dummy_hash, "")
+
             db.save_analysis_result(
                 schema_id=schema_id,
                 file_path=file_path,
