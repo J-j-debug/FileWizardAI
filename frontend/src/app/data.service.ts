@@ -49,6 +49,10 @@ export class DataService {
     return this.http.post<any>(`${this.apiUrl}/index_files`, data);
   }
 
+  startDeepAnalysis(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/deep_analysis`, payload);
+  }
+
   // --- Notebooks API ---
 
   getNotebooks(): Observable<any[]> {
