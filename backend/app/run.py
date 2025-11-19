@@ -6,6 +6,7 @@ import os
 import logging
 from pathlib import Path
 import hashlib
+import json
 
 from .database import SQLiteDB
 from .settings import CustomFormatter
