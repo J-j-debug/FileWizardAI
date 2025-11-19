@@ -134,6 +134,30 @@ class Model:
                 self.cnt_txt += 1
         return summary
 
+    async def generate_text_api(self, prompt: str):
+        """A generic method to get a text completion from a prompt."""
+        attempt = 0
+        response_text = ""
+        while attempt < 5:
+            try:
+                chat_completion = await self.async_text_clients[
+                    self.cnt_txt % self.text_keys_count].chat.completions.create(
+                    model=self.TEXT_MODEL_NAME,
+                    messages=[
+                        {"role": "user", "content": prompt},
+                    ],
+                    stream=False,
+                    temperature=0,
+                    timeout=None,
+                )
+                response_text = chat_completion.choices[0].message.content
+                break
+            except Exception as e:
+                logger.error(f"Error generating text: {e}")
+                attempt += 1
+                self.cnt_txt += 1
+        return response_text
+
     async def generate_rag_response_api(self, context: str, query: str, custom_prompt_template: str = None):
         if custom_prompt_template:
             # Use the custom template provided by the user
