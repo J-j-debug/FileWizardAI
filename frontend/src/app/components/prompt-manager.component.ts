@@ -140,12 +140,14 @@ export class PromptManagerComponent {
   selectedPrompt: CustomPrompt | null = null;
   editablePrompt: CustomPrompt = { title: '', content: '' };
   originalPrompt: CustomPrompt | null = null;
+  defaultPrompt: CustomPrompt;
 
   constructor(
     public dialogRef: MatDialogRef<PromptManagerComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.prompts = [...data.prompts]; // Create a local copy
+    this.defaultPrompt = data.defaultPrompt;
   }
 
   onPromptSelected(event: any): void {
@@ -157,7 +159,7 @@ export class PromptManagerComponent {
   }
 
   isDefaultPrompt(prompt: CustomPrompt | null): boolean {
-    return prompt?.content === this.data.defaultPromptContent;
+    return prompt === this.defaultPrompt;
   }
 
   isChanged(): boolean {
@@ -185,7 +187,7 @@ export class PromptManagerComponent {
   }
 
   createNewPrompt(): void {
-    const newPrompt: CustomPrompt = { title: 'Nouveau Prompt', content: this.data.defaultPromptContent };
+    const newPrompt: CustomPrompt = { title: 'Nouveau Prompt', content: this.defaultPrompt.content };
     this.prompts.push(newPrompt);
     this.selectedPrompt = newPrompt;
     this.originalPrompt = JSON.parse(JSON.stringify(this.selectedPrompt));
@@ -200,7 +202,7 @@ export class PromptManagerComponent {
       }
     }
     // Return only custom prompts
-    this.dialogRef.close(this.prompts.filter(p => p.content !== this.data.defaultPromptContent));
+    this.dialogRef.close(this.prompts.filter(p => !this.isDefaultPrompt(p)));
   }
 
   onCancel(): void {

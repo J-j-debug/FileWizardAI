@@ -12,8 +12,10 @@ import asyncio
 from fastapi import Response
 from fastapi.responses import FileResponse
 from .database import SQLiteDB
+from . import run as file_operations
 from pydantic import BaseModel
 import json
+from typing import List
 
 # Helper for path normalization
 def normalize_path(path: str) -> str:
@@ -35,6 +37,18 @@ class NotebookFiles(BaseModel):
 class IndexRequest(BaseModel):
     file_paths: list[str]
     use_advanced_indexing: bool = False
+
+class ComplementaryQuestion(BaseModel):
+    question: str
+    isYesNo: bool
+
+class DeepAnalysisRequest(BaseModel):
+    root_path: str
+    recursive: bool
+    required_exts: List[str]
+    summary_prompt: str
+    complementary_questions: List[ComplementaryQuestion]
+    tags: str
 
 
 app = FastAPI()
@@ -348,6 +362,38 @@ async def get_current_llm_config():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.post("/deep_analysis")
+async def deep_analysis(request: DeepAnalysisRequest):
+    if not os.path.exists(request.root_path):
+        raise HTTPException(status_code=404, detail=f"Path doesn't exist: {request.root_path}")
+
+    # Create a unique name for the analysis schema based on the request
+    schema_name = f"Analysis_{request.summary_prompt[:20]}_{hash(str(request.complementary_questions))}"
+    schema_data = {
+        "summary_prompt": request.summary_prompt,
+        "complementary_questions": [q.dict() for q in request.complementary_questions],
+        "tags": request.tags
+    }
+    schema_id = db.create_analysis_schema(name=schema_name, schema_data=json.dumps(schema_data))
+
+    if schema_id is None:
+        # If schema already exists, retrieve its ID by name
+        schema_id = db.get_schema_by_name(schema_name)
+        if schema_id is None:
+            # This case should ideally not be reached if schema creation is robust
+            raise HTTPException(status_code=500, detail="Failed to create or retrieve analysis schema.")
+
+    analysis_results = await file_operations.run_deep_analysis(
+        root_path=request.root_path,
+        recursive=request.recursive,
+        required_exts=request.required_exts,
+        schema_id=schema_id,
+        schema_data=schema_data
+    )
+
+    return {"results": analysis_results}
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import os
 import logging
 from pathlib import Path
 import hashlib
+import json
 
 from .database import SQLiteDB
 from .settings import CustomFormatter
@@ -147,3 +148,71 @@ def get_file_hash(file_path):
         while chunk := f.read(8192):
             hash_func.update(chunk)
     return hash_func.hexdigest()
+
+async def run_deep_analysis(root_path: str, recursive: bool, required_exts: list, schema_id: int, schema_data: dict):
+    """
+    Runs a deep analysis on a set of files based on a given schema.
+    """
+    logger.info(f"Starting deep analysis with schema ID: {schema_id}")
+
+    # Use the robust load_documents function
+    documents_to_analyze = load_documents(root_path, recursive, required_exts)
+
+    all_results = []
+    model = Model()
+
+    for doc in documents_to_analyze:
+        file_path = doc.metadata.get('file_path', 'unknown_file')
+        try:
+            content = doc.text
+
+            # Prepare prompts for the LLM
+            tasks = []
+            # 1. Summary
+            summary_full_prompt = f"{schema_data['summary_prompt']}\n\n{content}"
+            tasks.append(model.generate_text_api(summary_full_prompt))
+
+            # 2. Complementary Questions
+            for q_data in schema_data['complementary_questions']:
+                question_prompt = f"Répondez à la question suivante en vous basant sur le document fourni. Document: \"{content}\"\n\nQuestion: \"{q_data['question']}\""
+                if q_data['isYesNo']:
+                    question_prompt += " Répondez uniquement par 'Oui' ou 'Non'."
+                tasks.append(model.generate_text_api(question_prompt))
+
+            # 3. Tagging
+            tags_prompt = f"Le document suivant parle-t-il des sujets suivants: {schema_data['tags']}? Pour chaque tag, indiquez 'Oui' ou 'Non'. Document: \"{content}\""
+            tasks.append(model.generate_text_api(tags_prompt))
+
+            # Execute all LLM calls in parallel
+            llm_responses = await asyncio.gather(*tasks)
+
+            # Process responses
+            summary_response = llm_responses[0]
+            questions_responses = llm_responses[1:-1]
+            tags_response = llm_responses[-1]
+
+            file_results = {
+                "summary": summary_response,
+                "questions": {},
+                "tags": tags_response
+            }
+            for i, q_data in enumerate(schema_data['complementary_questions']):
+                file_results["questions"][q_data['question']] = questions_responses[i]
+
+            # Ensure the file exists in the summary table to satisfy the foreign key constraint.
+            # We use a dummy hash and summary because this table is not the primary source for deep analysis results.
+            dummy_hash = get_file_hash(file_path)
+            db.insert_file_summary(file_path, dummy_hash, "")
+
+            db.save_analysis_result(
+                schema_id=schema_id,
+                file_path=file_path,
+                results=json.dumps(file_results)
+            )
+            all_results.append({"file_path": file_path, "analysis": file_results})
+            logger.info(f"Successfully analyzed and saved results for {file_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to analyze file {file_path}: {e}")
+
+    return all_results
