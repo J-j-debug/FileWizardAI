@@ -53,6 +53,14 @@ export class DataService {
     return this.http.post<any>(`${this.apiUrl}/deep_analysis`, payload);
   }
 
+  getAnalysisSchemas(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/analysis_schemas`);
+  }
+
+  getAnalysisSchema(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/analysis_schemas/${id}`);
+  }
+
   // --- Notebooks API ---
 
   getNotebooks(): Observable<any[]> {

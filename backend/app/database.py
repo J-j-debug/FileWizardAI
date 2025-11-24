@@ -152,6 +152,14 @@ class SQLiteDB:
         )
         return self.cursor.fetchall()
 
+    def get_analyzed_file_paths(self, schema_id):
+        self.cursor.execute("SELECT file_path FROM analysis_results WHERE schema_id = ?", (schema_id,))
+        return [row[0] for row in self.cursor.fetchall()]
+
+    def delete_analysis_results(self, schema_id):
+        self.cursor.execute("DELETE FROM analysis_results WHERE schema_id = ?", (schema_id,))
+        self.conn.commit()
+
 
     # Existing methods for files_summary
     def select(self, table_name, where_clause=None):

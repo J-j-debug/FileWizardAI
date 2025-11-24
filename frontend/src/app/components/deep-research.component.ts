@@ -100,6 +100,21 @@ interface ExtensionGroup {
           </mat-checkbox>
       </div>
       <div class="analysis-section">
+        <div class="schema-management-section">
+            <mat-form-field appearance="outline">
+                <mat-label>Charger un Schéma Existant</mat-label>
+                <mat-select (selectionChange)="onSchemaSelect($event.value)">
+                    <mat-option *ngFor="let schema of schemas" [value]="schema.id">
+                        {{ schema.name }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+                <mat-label>Nom du Schéma (pour sauvegarder)</mat-label>
+                <input matInput [(ngModel)]="schemaName" placeholder="Ex: Analyse Fiscale Trimestrielle">
+            </mat-form-field>
+        </div>
+
          <div class="section-header">
           <div class="icon-title">
             <mat-icon>science</mat-icon>
@@ -133,10 +148,15 @@ interface ExtensionGroup {
           <input matInput [(ngModel)]="tags" placeholder="ex: fiscalité, éco-taxe, droit social">
         </mat-form-field>
 
-        <button mat-flat-button color="primary" class="analyze-btn" (click)="startAnalysis()">
-          <mat-icon>pageview</mat-icon>
-          Lancer l'Analyse
-        </button>
+        <div class="analysis-actions">
+          <mat-checkbox [(ngModel)]="isIncrementalMode" color="accent" matTooltip="Si coché, seuls les nouveaux fichiers du dossier seront analysés et ajoutés aux résultats existants. Sinon, tous les résultats précédents pour ce schéma seront supprimés.">
+            Ajouter à l'analyse existante (mode incrémental)
+          </mat-checkbox>
+          <button mat-flat-button color="primary" class="analyze-btn" (click)="startAnalysis()">
+            <mat-icon>pageview</mat-icon>
+            Lancer l'Analyse
+          </button>
+        </div>
       </div>
     </div>
     <div *ngIf="analysisResult" class="results-section">
@@ -175,6 +195,7 @@ interface ExtensionGroup {
     .group-info { display: flex; align-items: center; gap: 0.5rem; }
     .group-content { display: none; padding: 0.5rem; gap: 0.5rem; flex-wrap: wrap; &.expanded { display: flex; } }
     .subdirectories-check { margin-top: 1rem; }
+    .schema-management-section { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 2rem; }
     .analysis-field { width: 100%; margin-top: 1rem; }
     .question-block { display: flex; align-items: center; gap: 1rem; }
     .tags-field { margin-top: 2rem; }
@@ -191,6 +212,12 @@ export class DeepResearchComponent {
   complementaryQuestions: { question: string, isYesNo: boolean }[] = [];
   tags: string = "";
   analysisResult: any = null;
+
+  // Schema Management
+  schemas: any[] = [];
+  selectedSchemaId: number | null = null;
+  schemaName: string = "";
+  isIncrementalMode: boolean = false;
 
 
   extensionGroups: ExtensionGroup[] = [
@@ -254,6 +281,24 @@ export class DeepResearchComponent {
 
   constructor(private dataService: DataService) {
     this.updateSelectedCounts();
+    this.loadSchemas();
+  }
+
+  loadSchemas(): void {
+    this.dataService.getAnalysisSchemas().subscribe(schemas => {
+      this.schemas = schemas;
+    });
+  }
+
+  onSchemaSelect(schemaId: number): void {
+    this.dataService.getAnalysisSchema(schemaId).subscribe(schema => {
+      this.schemaName = schema.name;
+      const data = schema.schema_data;
+      this.summaryPrompt = data.summary_prompt;
+      this.complementaryQuestions = data.complementary_questions;
+      this.tags = data.tags;
+      this.selectedSchemaId = schema.id;
+    });
   }
 
   startAnalysis(): void {
@@ -263,10 +308,14 @@ export class DeepResearchComponent {
       required_exts: this.filesExts,
       summary_prompt: this.summaryPrompt,
       complementary_questions: this.complementaryQuestions,
-      tags: this.tags
+      tags: this.tags,
+      schema_name: this.schemaName,
+      is_incremental: this.isIncrementalMode
     };
     this.dataService.startDeepAnalysis(payload).subscribe(result => {
       this.analysisResult = result;
+      // Refresh the schema list in case a new one was created
+      this.loadSchemas();
     });
   }
 

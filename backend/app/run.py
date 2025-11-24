@@ -149,14 +149,21 @@ def get_file_hash(file_path):
             hash_func.update(chunk)
     return hash_func.hexdigest()
 
-async def run_deep_analysis(root_path: str, recursive: bool, required_exts: list, schema_id: int, schema_data: dict):
+async def run_deep_analysis(root_path: str, recursive: bool, required_exts: list, schema_id: int, schema_data: dict, is_incremental: bool = False):
     """
     Runs a deep analysis on a set of files based on a given schema.
     """
-    logger.info(f"Starting deep analysis with schema ID: {schema_id}")
+    logger.info(f"Starting deep analysis with schema ID: {schema_id}. Incremental mode: {is_incremental}")
 
-    # Use the robust load_documents function
     documents_to_analyze = load_documents(root_path, recursive, required_exts)
+
+    if is_incremental:
+        already_analyzed = db.get_analyzed_file_paths(schema_id)
+        documents_to_analyze = [
+            doc for doc in documents_to_analyze
+            if doc.metadata.get('file_path') not in already_analyzed
+        ]
+        logger.info(f"Found {len(documents_to_analyze)} new file(s) to analyze in incremental mode.")
 
     all_results = []
     model = Model()
