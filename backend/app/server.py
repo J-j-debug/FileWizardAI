@@ -12,8 +12,10 @@ import asyncio
 from fastapi import Response
 from fastapi.responses import FileResponse
 from .database import SQLiteDB
+from . import run as file_operations
 from pydantic import BaseModel
 import json
+from typing import List
 
 # Helper for path normalization
 def normalize_path(path: str) -> str:
@@ -35,6 +37,20 @@ class NotebookFiles(BaseModel):
 class IndexRequest(BaseModel):
     file_paths: list[str]
     use_advanced_indexing: bool = False
+
+class ComplementaryQuestion(BaseModel):
+    question: str
+    isYesNo: bool
+
+class DeepAnalysisRequest(BaseModel):
+    root_path: str
+    recursive: bool
+    required_exts: List[str]
+    summary_prompt: str
+    complementary_questions: List[ComplementaryQuestion]
+    tags: str
+    schema_name: str = None
+    is_incremental: bool = False
 
 
 app = FastAPI()
@@ -348,6 +364,62 @@ async def get_current_llm_config():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.get("/analysis_schemas")
+async def get_analysis_schemas():
+    schemas = db.get_analysis_schemas()
+    return [{"id": s[0], "name": s[1], "schema_data": json.loads(s[2])} for s in schemas]
+
+@app.get("/analysis_schemas/{schema_id}")
+async def get_analysis_schema(schema_id: int):
+    schema = db.get_analysis_schema(schema_id)
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found.")
+    return {"id": schema[0], "name": schema[1], "schema_data": json.loads(schema[2])}
+
+
+@app.post("/deep_analysis")
+async def deep_analysis(request: DeepAnalysisRequest):
+    if not os.path.exists(request.root_path):
+        raise HTTPException(status_code=404, detail=f"Path doesn't exist: {request.root_path}")
+
+    # Use the schema name provided by the user, or generate one if not provided
+    schema_name = request.schema_name if request.schema_name else f"Analysis_{int(time.time())}"
+
+    schema_data = {
+        "summary_prompt": request.summary_prompt,
+        "complementary_questions": [q.dict() for q in request.complementary_questions],
+        "tags": request.tags
+    }
+
+    schema_id = db.get_schema_by_name(schema_name)
+    if schema_id is None:
+        schema_id = db.create_analysis_schema(name=schema_name, schema_data=json.dumps(schema_data))
+        if schema_id is None:
+             raise HTTPException(status_code=500, detail="Failed to create new analysis schema.")
+
+    if not request.is_incremental:
+        # Overwrite mode: delete previous results for this schema
+        db.delete_analysis_results(schema_id)
+
+    analysis_results = await file_operations.run_deep_analysis(
+        root_path=request.root_path,
+        recursive=request.recursive,
+        required_exts=request.required_exts,
+        schema_id=schema_id,
+        schema_data=schema_data,
+        is_incremental=request.is_incremental
+    )
+
+    # After analysis, fetch all results for the schema to return a complete view
+    all_schema_results = db.get_analysis_results(schema_id)
+
+    # Format the results before sending
+    formatted_results = [
+        {"file_path": r[0], "analysis": json.loads(r[1])} for r in all_schema_results
+    ]
+
+    return {"schema_id": schema_id, "results": formatted_results}
 
 
 if __name__ == "__main__":

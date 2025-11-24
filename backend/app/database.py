@@ -132,6 +132,11 @@ class SQLiteDB:
         self.cursor.execute("SELECT id, name, schema_data FROM analysis_schemas WHERE id = ?", (schema_id,))
         return self.cursor.fetchone()
 
+    def get_schema_by_name(self, name):
+        self.cursor.execute("SELECT id FROM analysis_schemas WHERE name = ?", (name,))
+        result = self.cursor.fetchone()
+        return result[0] if result else None
+
     # Analysis Result methods
     def save_analysis_result(self, schema_id, file_path, results):
         self.cursor.execute(
@@ -146,6 +151,14 @@ class SQLiteDB:
             (schema_id,)
         )
         return self.cursor.fetchall()
+
+    def get_analyzed_file_paths(self, schema_id):
+        self.cursor.execute("SELECT file_path FROM analysis_results WHERE schema_id = ?", (schema_id,))
+        return [row[0] for row in self.cursor.fetchall()]
+
+    def delete_analysis_results(self, schema_id):
+        self.cursor.execute("DELETE FROM analysis_results WHERE schema_id = ?", (schema_id,))
+        self.conn.commit()
 
 
     # Existing methods for files_summary
