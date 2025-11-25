@@ -98,6 +98,21 @@ interface ExtensionGroup {
          <mat-checkbox [(ngModel)]="isRecursive" color="primary" class="subdirectories-check">
             Inclure les sous-dossiers
           </mat-checkbox>
+
+          <div class="results-toggle-buttons">
+            <button mat-flat-button class="show-btn"
+                    *ngIf="!showResults"
+                    (click)="showResults = true"
+                    [disabled]="!analysisResult || !analysisResult.results || analysisResult.results.length === 0">
+              Afficher les résultats
+            </button>
+            <button mat-flat-button class="hide-btn"
+                    *ngIf="showResults"
+                    (click)="showResults = false"
+                    [disabled]="!analysisResult || !analysisResult.results || analysisResult.results.length === 0">
+              Réduire les résultats
+            </button>
+          </div>
       </div>
       <div class="analysis-section">
         <div class="schema-management-section">
@@ -159,11 +174,24 @@ interface ExtensionGroup {
         </div>
       </div>
     </div>
-    <div *ngIf="analysisResult" class="results-section">
+    <div *ngIf="analysisResult && showResults" class="results-section">
       <app-results [results]="analysisResult.results"></app-results>
     </div>
   `,
   styles: [`
+    .results-toggle-buttons {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 1rem;
+    }
+    .show-btn {
+      background-color: #4CAF50; /* Green */
+      color: white;
+    }
+    .hide-btn {
+      background-color: #f44336; /* Red */
+      color: white;
+    }
     .deep-research-container {
       display: grid;
       grid-template-columns: 1fr 1.5fr;
@@ -218,6 +246,7 @@ export class DeepResearchComponent {
   selectedSchemaId: number | null = null;
   schemaName: string = "";
   isIncrementalMode: boolean = false;
+  showResults: boolean = false;
 
 
   extensionGroups: ExtensionGroup[] = [
@@ -291,6 +320,10 @@ export class DeepResearchComponent {
   }
 
   onSchemaSelect(schemaId: number): void {
+    // Reset previous results
+    this.analysisResult = null;
+
+    // Fetch schema details
     this.dataService.getAnalysisSchema(schemaId).subscribe(schema => {
       this.schemaName = schema.name;
       const data = schema.schema_data;
@@ -298,6 +331,11 @@ export class DeepResearchComponent {
       this.complementaryQuestions = data.complementary_questions;
       this.tags = data.tags;
       this.selectedSchemaId = schema.id;
+    });
+
+    // Fetch schema results
+    this.dataService.getAnalysisSchemaResults(schemaId).subscribe(results => {
+      this.analysisResult = results;
     });
   }
 

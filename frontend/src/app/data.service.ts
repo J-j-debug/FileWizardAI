@@ -61,6 +61,10 @@ export class DataService {
     return this.http.get<any>(`${this.apiUrl}/analysis_schemas/${id}`);
   }
 
+  getAnalysisSchemaResults(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/analysis_schemas/${id}/results`);
+  }
+
   // --- Notebooks API ---
 
   getNotebooks(): Observable<any[]> {
