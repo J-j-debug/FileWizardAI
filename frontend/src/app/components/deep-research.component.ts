@@ -117,8 +117,9 @@ interface ExtensionGroup {
       <div class="analysis-section">
         <div class="schema-management-section">
             <mat-form-field appearance="outline">
-                <mat-label>Charger un Schéma Existant</mat-label>
-                <mat-select (selectionChange)="onSchemaSelect($event.value)">
+                <mat-label>Schéma d'Analyse</mat-label>
+                <mat-select [value]="selectedSchemaId" (selectionChange)="onSchemaSelectionChange($event.value)">
+                    <mat-option [value]="null">-- Nouveau Schéma de Recherche --</mat-option>
                     <mat-option *ngFor="let schema of schemas" [value]="schema.id">
                         {{ schema.name }}
                     </mat-option>
@@ -317,6 +318,24 @@ export class DeepResearchComponent {
     this.dataService.getAnalysisSchemas().subscribe(schemas => {
       this.schemas = schemas;
     });
+  }
+
+  onSchemaSelectionChange(value: number | null): void {
+    if (value === null) {
+      this.resetForm();
+    } else {
+      this.onSchemaSelect(value);
+    }
+  }
+
+  resetForm(): void {
+    this.schemaName = "";
+    this.summaryPrompt = "Résume le document suivant :";
+    this.complementaryQuestions = [];
+    this.tags = "";
+    this.selectedSchemaId = null;
+    this.analysisResult = null;
+    this.isIncrementalMode = false;
   }
 
   onSchemaSelect(schemaId: number): void {

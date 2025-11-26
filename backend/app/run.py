@@ -207,9 +207,10 @@ async def run_deep_analysis(root_path: str, recursive: bool, required_exts: list
                 file_results["questions"][q_data['question']] = questions_responses[i]
 
             # Ensure the file exists in the summary table to satisfy the foreign key constraint.
-            # We use a dummy hash and summary because this table is not the primary source for deep analysis results.
-            dummy_hash = get_file_hash(file_path)
-            db.insert_file_summary(file_path, dummy_hash, "")
+            # Only insert a placeholder if the file isn't already in the summary table.
+            if not db.get_file_summary(file_path):
+                dummy_hash = get_file_hash(file_path)
+                db.insert_file_summary(file_path, dummy_hash, "") # Insert placeholder
 
             db.save_analysis_result(
                 schema_id=schema_id,
