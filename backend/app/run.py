@@ -24,22 +24,55 @@ db = SQLiteDB()
 
 
 async def summarize_document(doc: Document):
-    logger.info(f"Processing file {doc.metadata['file_path']}")
-    doc_hash = get_file_hash(doc.metadata['file_path'])
-    if db.is_file_exist(doc.metadata['file_path'], doc_hash):
-        summary = db.get_file_summary(doc.metadata['file_path'])
-    else:
-        if not doc.text or not doc.text.strip():
-            summary = "File is empty or could not be read."
-            logger.warning(f"File {doc.metadata['file_path']} is empty or could not be read.")
+    """
+    Summarizes a document, ensuring robustness against empty files and invalid cache entries.
+    """
+    file_path = doc.metadata.get('file_path')
+    logger.info(f"Processing file: {file_path}")
+
+    # 1. Validate input document
+    if not file_path:
+        logger.error("Document is missing file_path in metadata.")
+        return None # Or handle as an error
+
+    doc_hash = get_file_hash(file_path)
+    summary = None
+
+    # 2. Check for existing, valid summary in the database
+    if db.is_file_exist(file_path, doc_hash):
+        summary = db.get_file_summary(file_path)
+        if summary and summary.strip():
+            logger.info(f"Found valid cached summary for {file_path}.")
+            return {"file_path": file_path, "summary": summary}
         else:
-            model = Model()
-            summary = await model.summarize_document_api(doc.text)
-        db.insert_file_summary(doc.metadata['file_path'], doc_hash, summary)
-    return {
-        "file_path": doc.metadata['file_path'],
-        "summary": summary
-    }
+            logger.warning(f"Cached summary for {file_path} is invalid. Regenerating.")
+
+    # 3. Handle unreadable or empty documents
+    if not doc.text or not doc.text.strip():
+        summary = "File is empty or could not be read."
+        logger.warning(f"File {file_path} is empty. Using placeholder summary.")
+        db.insert_file_summary(file_path, doc_hash, summary)
+        return {"file_path": file_path, "summary": summary}
+
+    # 4. Generate new summary if no valid one was found
+    try:
+        model = Model()
+        summary = await model.summarize_document_api(doc.text)
+        if summary:
+            db.insert_file_summary(file_path, doc_hash, summary)
+            logger.info(f"Successfully generated and cached new summary for {file_path}.")
+        else:
+            summary = "Failed to generate summary."
+            logger.error(f"LLM failed to generate summary for {file_path}.")
+            db.insert_file_summary(file_path, doc_hash, summary)
+
+    except Exception as e:
+        summary = f"An error occurred during summarization: {e}"
+        logger.error(f"Exception during summarization for {file_path}: {e}")
+        db.insert_file_summary(file_path, doc_hash, summary)
+
+
+    return {"file_path": file_path, "summary": summary}
 
 
 async def summarize_image_document(doc: ImageDocument):
