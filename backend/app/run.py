@@ -29,8 +29,12 @@ async def summarize_document(doc: Document):
     if db.is_file_exist(doc.metadata['file_path'], doc_hash):
         summary = db.get_file_summary(doc.metadata['file_path'])
     else:
-        model = Model()
-        summary = await model.summarize_document_api(doc.text)
+        if not doc.text or not doc.text.strip():
+            summary = "File is empty or could not be read."
+            logger.warning(f"File {doc.metadata['file_path']} is empty or could not be read.")
+        else:
+            model = Model()
+            summary = await model.summarize_document_api(doc.text)
         db.insert_file_summary(doc.metadata['file_path'], doc_hash, summary)
     return {
         "file_path": doc.metadata['file_path'],
