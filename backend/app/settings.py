@@ -237,12 +237,18 @@ class Model:
         for summary in valid_summaries:
             # it's better to use tiktoken here
             if (sys.getsizeof(json.dumps(tmp)) + sys.getsizeof(json.dumps(summary))) / 4 >= self.MAX_TOKEN_SIZE:
-                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
+                if prompt:
+                    file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
+                else:
+                    file_tree = file_tree + await self.create_file_tree_api_chunk(tmp)
                 tmp = []
             else:
                 tmp.append(summary)
         if len(tmp) > 0:
-            file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
+            if prompt:
+                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
+            else:
+                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp)
         return file_tree
 
     async def create_file_tree_api_chunk(self, summaries: list, prompt: str = """
@@ -275,16 +281,12 @@ class Model:
         file_tree = []  # Initialize as empty list
         while attempt < 10:
             try:
-                messages=[
-                    {"role": "system", "content": file_prompt},
-                    {"role": "user", "content": json.dumps(summaries)},
-                ]
-                if not file_prompt or not file_prompt.strip():
-                    messages.pop(0)
-
                 chat_completion = await self.async_text_clients[
                     self.cnt_txt % self.text_keys_count].chat.completions.create(
-                    messages=messages,
+                    messages=[
+                        {"role": "system", "content": file_prompt},
+                        {"role": "user", "content": json.dumps(summaries)},
+                    ],
                     model=self.TEXT_MODEL_NAME,
                     stream=False,
                     temperature=0,
