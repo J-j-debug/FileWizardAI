@@ -113,10 +113,13 @@ async def remove_deleted_files():
 
 
 def load_documents(path: str, recursive: bool, required_exts: list, token_count: int = 6144):
+    # If no specific extensions are required, set to None to load all files.
+    # An empty list would load no files.
+    extensions_to_load = required_exts if required_exts else None
     reader = SimpleDirectoryReader(
         input_dir=path,
         recursive=recursive,
-        required_exts=required_exts,
+        required_exts=extensions_to_load,
         errors='ignore'
     )
     splitter = TokenTextSplitter(chunk_size=token_count)
