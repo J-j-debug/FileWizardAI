@@ -275,12 +275,16 @@ class Model:
         file_tree = []  # Initialize as empty list
         while attempt < 10:
             try:
+                messages=[
+                    {"role": "system", "content": file_prompt},
+                    {"role": "user", "content": json.dumps(summaries)},
+                ]
+                if not file_prompt or not file_prompt.strip():
+                    messages.pop(0)
+
                 chat_completion = await self.async_text_clients[
                     self.cnt_txt % self.text_keys_count].chat.completions.create(
-                    messages=[
-                        {"role": "system", "content": file_prompt},
-                        {"role": "user", "content": json.dumps(summaries)},
-                    ],
+                    messages=messages,
                     model=self.TEXT_MODEL_NAME,
                     stream=False,
                     temperature=0,
