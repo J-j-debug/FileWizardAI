@@ -24,18 +24,55 @@ db = SQLiteDB()
 
 
 async def summarize_document(doc: Document):
-    logger.info(f"Processing file {doc.metadata['file_path']}")
-    doc_hash = get_file_hash(doc.metadata['file_path'])
-    if db.is_file_exist(doc.metadata['file_path'], doc_hash):
-        summary = db.get_file_summary(doc.metadata['file_path'])
-    else:
+    """
+    Summarizes a document, ensuring robustness against empty files and invalid cache entries.
+    """
+    file_path = doc.metadata.get('file_path')
+    logger.info(f"Processing file: {file_path}")
+
+    # 1. Validate input document
+    if not file_path:
+        logger.error("Document is missing file_path in metadata.")
+        return None # Or handle as an error
+
+    doc_hash = get_file_hash(file_path)
+    summary = None
+
+    # 2. Check for existing, valid summary in the database
+    if db.is_file_exist(file_path, doc_hash):
+        summary = db.get_file_summary(file_path)
+        if summary and summary.strip():
+            logger.info(f"Found valid cached summary for {file_path}.")
+            return {"file_path": file_path, "summary": summary}
+        else:
+            logger.warning(f"Cached summary for {file_path} is invalid. Regenerating.")
+
+    # 3. Handle unreadable or empty documents
+    if not doc.text or not doc.text.strip():
+        summary = "File is empty or could not be read."
+        logger.warning(f"File {file_path} is empty. Using placeholder summary.")
+        db.insert_file_summary(file_path, doc_hash, summary)
+        return {"file_path": file_path, "summary": summary}
+
+    # 4. Generate new summary if no valid one was found
+    try:
         model = Model()
         summary = await model.summarize_document_api(doc.text)
-        db.insert_file_summary(doc.metadata['file_path'], doc_hash, summary)
-    return {
-        "file_path": doc.metadata['file_path'],
-        "summary": summary
-    }
+        if summary:
+            db.insert_file_summary(file_path, doc_hash, summary)
+            logger.info(f"Successfully generated and cached new summary for {file_path}.")
+        else:
+            summary = "Failed to generate summary."
+            logger.error(f"LLM failed to generate summary for {file_path}.")
+            db.insert_file_summary(file_path, doc_hash, summary)
+
+    except Exception as e:
+        summary = f"An error occurred during summarization: {e}"
+        logger.error(f"Exception during summarization for {file_path}: {e}")
+        db.insert_file_summary(file_path, doc_hash, summary)
+
+
+    return {"file_path": file_path, "summary": summary}
 
 
 async def summarize_image_document(doc: ImageDocument):
@@ -76,10 +113,13 @@ async def remove_deleted_files():
 
 
 def load_documents(path: str, recursive: bool, required_exts: list, token_count: int = 6144):
+    # If no specific extensions are required, set to None to load all files.
+    # An empty list would load no files.
+    extensions_to_load = required_exts if required_exts else None
     reader = SimpleDirectoryReader(
         input_dir=path,
         recursive=recursive,
-        required_exts=required_exts,
+        required_exts=extensions_to_load,
         errors='ignore'
     )
     splitter = TokenTextSplitter(chunk_size=token_count)
@@ -207,9 +247,10 @@ async def run_deep_analysis(root_path: str, recursive: bool, required_exts: list
                 file_results["questions"][q_data['question']] = questions_responses[i]
 
             # Ensure the file exists in the summary table to satisfy the foreign key constraint.
-            # We use a dummy hash and summary because this table is not the primary source for deep analysis results.
-            dummy_hash = get_file_hash(file_path)
-            db.insert_file_summary(file_path, dummy_hash, "")
+            # Only insert a placeholder if the file isn't already in the summary table.
+            if not db.get_file_summary(file_path):
+                dummy_hash = get_file_hash(file_path)
+                db.insert_file_summary(file_path, dummy_hash, "") # Insert placeholder
 
             db.save_analysis_result(
                 schema_id=schema_id,

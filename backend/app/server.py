@@ -377,6 +377,17 @@ async def get_analysis_schema(schema_id: int):
         raise HTTPException(status_code=404, detail="Schema not found.")
     return {"id": schema[0], "name": schema[1], "schema_data": json.loads(schema[2])}
 
+@app.get("/analysis_schemas/{schema_id}/results")
+async def get_analysis_schema_results(schema_id: int):
+    results = db.get_analysis_results(schema_id)
+    if not results:
+        return {"results": []}
+
+    formatted_results = [
+        {"file_path": r[0], "analysis": json.loads(r[1])} for r in results
+    ]
+    return {"results": formatted_results}
+
 
 @app.post("/deep_analysis")
 async def deep_analysis(request: DeepAnalysisRequest):
