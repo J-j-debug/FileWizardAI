@@ -11,8 +11,50 @@ import mimetypes
 import asyncio
 from fastapi import Response
 from fastapi.responses import FileResponse
+from .database import SQLiteDB
+from . import run as file_operations
+from pydantic import BaseModel
+import json
+from typing import List
+
+# Helper for path normalization
+def normalize_path(path: str) -> str:
+    # Replace backslashes with forward slashes and remove any trailing slashes
+    return os.path.normpath(path).replace("\\", "/")
+
+# Pydantic models for request bodies
+class NotebookCreate(BaseModel):
+    name: str
+    description: str = ""
+
+class NotebookUpdate(BaseModel):
+    name: str
+    description: str
+
+class NotebookFiles(BaseModel):
+    file_paths: list[str]
+
+class IndexRequest(BaseModel):
+    file_paths: list[str]
+    use_advanced_indexing: bool = False
+
+class ComplementaryQuestion(BaseModel):
+    question: str
+    isYesNo: bool
+
+class DeepAnalysisRequest(BaseModel):
+    root_path: str
+    recursive: bool
+    required_exts: List[str]
+    summary_prompt: str
+    complementary_questions: List[ComplementaryQuestion]
+    tags: str
+    schema_name: str = None
+    is_incremental: bool = False
+
 
 app = FastAPI()
+db = SQLiteDB()
 
 @app.on_event("startup")
 async def startup_event():
@@ -33,13 +75,108 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 def get_angular_app():
     return FileResponse("app/static/index.html")
 
+# --- Notebooks Endpoints ---
+
+@app.post("/notebooks", status_code=201)
+async def create_notebook(notebook: NotebookCreate):
+    notebook_id = db.create_notebook(notebook.name, notebook.description)
+    if notebook_id is None:
+        raise HTTPException(status_code=409, detail=f"A notebook with the name '{notebook.name}' already exists.")
+    return {"id": notebook_id, "name": notebook.name, "description": notebook.description}
+
+@app.get("/notebooks")
+async def get_notebooks():
+    notebooks = db.get_notebooks()
+    return [{"id": n[0], "name": n[1], "description": n[2]} for n in notebooks]
+
+@app.put("/notebooks/{notebook_id}")
+async def update_notebook(notebook_id: int, notebook: NotebookUpdate):
+    success = db.update_notebook(notebook_id, notebook.name, notebook.description)
+    if not success:
+        raise HTTPException(status_code=409, detail=f"A notebook with the name '{notebook.name}' already exists.")
+    return {"message": "Notebook updated successfully"}
+
+@app.delete("/notebooks/{notebook_id}")
+async def delete_notebook(notebook_id: int):
+    # First, delete associated ChromaDB collections
+    rag_utils.delete_notebook_collections(notebook_id)
+    # Then, delete the notebook from the database
+    db.delete_notebook(notebook_id)
+    return {"message": "Notebook and associated data deleted successfully"}
+
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@app.post("/notebooks/{notebook_id}/files", status_code=201)
+async def add_files_to_notebook(notebook_id: int, files: NotebookFiles):
+    normalized_paths = [normalize_path(p) for p in files.file_paths]
+    success = db.add_files_to_notebook(notebook_id, normalized_paths)
+    if not success:
+        raise HTTPException(status_code=400, detail="Error adding files. Ensure file paths are valid and not already in the notebook.")
+
+    for file_path in normalized_paths:
+        logger.info(f"File added to notebook {notebook_id}: {file_path}")
+
+    return {"message": "Files added to notebook successfully"}
+
+@app.get("/notebooks/{notebook_id}/files")
+async def get_notebook_files(notebook_id: int):
+    files = db.get_files_for_notebook(notebook_id)
+    return {"file_paths": files}
+
+@app.delete("/notebooks/{notebook_id}/files")
+async def remove_files_from_notebook(notebook_id: int, files: NotebookFiles):
+    normalized_paths = [normalize_path(p) for p in files.file_paths]
+    db.remove_files_from_notebook(notebook_id, normalized_paths)
+    return {"message": "Files removed from notebook successfully"}
+
+@app.post("/notebooks/{notebook_id}/index")
+async def index_notebook_files(notebook_id: int, request: IndexRequest):
+    try:
+        await rag_utils.index_files_for_notebook(
+            notebook_id=notebook_id,
+            file_paths=request.file_paths,
+            use_advanced_indexing=request.use_advanced_indexing
+        )
+        return {"message": f"Files for notebook {notebook_id} indexed successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to index files for notebook {notebook_id}: {e}")
+
+@app.get("/notebooks/{notebook_id}/search")
+async def search_in_notebook(notebook_id: int, query: str, use_advanced_indexing: bool = False, top_k: int = 5, prompt_template: str = None):
+    collection_name = rag_utils.get_notebook_collection_name(notebook_id, use_advanced_indexing)
+
+    try:
+        chroma_client = rag_utils.get_chroma_client()
+        # Use get_collection to ensure it exists before querying
+        collection = chroma_client.get_collection(name=collection_name)
+
+        result = await rag_utils.query_rag(query, collection, top_k, prompt_template)
+        return result
+    except Exception as e:
+        # Handle cases where the collection might not exist yet
+        raise HTTPException(status_code=404, detail=f"Could not find collection for notebook {notebook_id}. Have you indexed any files? Error: {e}")
+
+
+from .settings import Model
+
+@app.get("/default_prompt")
+async def get_default_prompt():
+    from .settings import Model
+    # This is not the cleanest way, but it's safe from import errors.
+    # We get the default prompt string directly from the method's defaults.
+    default_prompt = Model.create_file_tree_api_chunk.__defaults__[0]
+    return {"prompt": default_prompt}
 
 @app.get("/get_files")
-async def get_files(root_path: str, recursive: bool, required_exts: str):
+async def get_files(root_path: str, recursive: bool, required_exts: str, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast'):
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
     required_exts = required_exts.split(';')
-    files = await run(root_path, recursive, required_exts)
+    files = await run(root_path, recursive, required_exts, prompt=prompt, token_count=token_count, summary_strategy=summary_strategy)
     return {
         "root_path": root_path,
         "items": files
@@ -227,6 +364,73 @@ async def get_current_llm_config():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.get("/analysis_schemas")
+async def get_analysis_schemas():
+    schemas = db.get_analysis_schemas()
+    return [{"id": s[0], "name": s[1], "schema_data": json.loads(s[2])} for s in schemas]
+
+@app.get("/analysis_schemas/{schema_id}")
+async def get_analysis_schema(schema_id: int):
+    schema = db.get_analysis_schema(schema_id)
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found.")
+    return {"id": schema[0], "name": schema[1], "schema_data": json.loads(schema[2])}
+
+@app.get("/analysis_schemas/{schema_id}/results")
+async def get_analysis_schema_results(schema_id: int):
+    results = db.get_analysis_results(schema_id)
+    if not results:
+        return {"results": []}
+
+    formatted_results = [
+        {"file_path": r[0], "analysis": json.loads(r[1])} for r in results
+    ]
+    return {"results": formatted_results}
+
+
+@app.post("/deep_analysis")
+async def deep_analysis(request: DeepAnalysisRequest):
+    if not os.path.exists(request.root_path):
+        raise HTTPException(status_code=404, detail=f"Path doesn't exist: {request.root_path}")
+
+    # Use the schema name provided by the user, or generate one if not provided
+    schema_name = request.schema_name if request.schema_name else f"Analysis_{int(time.time())}"
+
+    schema_data = {
+        "summary_prompt": request.summary_prompt,
+        "complementary_questions": [q.dict() for q in request.complementary_questions],
+        "tags": request.tags
+    }
+
+    schema_id = db.get_schema_by_name(schema_name)
+    if schema_id is None:
+        schema_id = db.create_analysis_schema(name=schema_name, schema_data=json.dumps(schema_data))
+        if schema_id is None:
+             raise HTTPException(status_code=500, detail="Failed to create new analysis schema.")
+
+    if not request.is_incremental:
+        # Overwrite mode: delete previous results for this schema
+        db.delete_analysis_results(schema_id)
+
+    analysis_results = await file_operations.run_deep_analysis(
+        root_path=request.root_path,
+        recursive=request.recursive,
+        required_exts=request.required_exts,
+        schema_id=schema_id,
+        schema_data=schema_data,
+        is_incremental=request.is_incremental
+    )
+
+    # After analysis, fetch all results for the schema to return a complete view
+    all_schema_results = db.get_analysis_results(schema_id)
+
+    # Format the results before sending
+    formatted_results = [
+        {"file_path": r[0], "analysis": json.loads(r[1])} for r in all_schema_results
+    ]
+
+    return {"schema_id": schema_id, "results": formatted_results}
 
 
 if __name__ == "__main__":

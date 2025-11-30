@@ -13,6 +13,7 @@ import shutil
 import json
 import tempfile
 from unstructured.partition.auto import partition
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -311,7 +312,7 @@ async def query_rag(query: str, collection, top_k: int = 5, prompt_template: str
     query_embedding = model.encode(query, convert_to_tensor=False).tolist()
 
     # For re-ranking, we fetch more initial results.
-    initial_results_count = top_k * 4 if collection.name == "file_embeddings_unstructured" else top_k
+    initial_results_count = top_k * 4 if collection.name.endswith("_unstructured") else top_k
 
     results = collection.query(
         query_embeddings=[query_embedding],
@@ -327,7 +328,7 @@ async def query_rag(query: str, collection, top_k: int = 5, prompt_template: str
         return {"main_response": {"response": "No relevant documents found.", "source": None}, "other_relevant_passages": []}
 
     # --- Re-ranking logic for the advanced pipeline ---
-    if collection.name == "file_embeddings_unstructured":
+    if collection.name.endswith("_unstructured"):
         logger.info(f"Applying CrossEncoder re-ranking to {len(documents)} results.")
         # Create pairs of [query, document] for scoring
         sentence_pairs = [[query, doc] for doc in documents]
@@ -395,3 +396,67 @@ async def query_rag(query: str, collection, top_k: int = 5, prompt_template: str
         "main_response": main_response,
         "other_relevant_passages": other_relevant_passages
     }
+
+# --- Notebook-specific Functions ---
+
+def get_notebook_collection_name(notebook_id: int, use_advanced_indexing: bool):
+    """Generates a collection name for a given notebook ID."""
+    sanitized_suffix = "unstructured" if use_advanced_indexing else "standard"
+    return f"notebook_{notebook_id}_{sanitized_suffix}"
+
+def delete_notebook_collections(notebook_id: int):
+    """Deletes all ChromaDB collections associated with a notebook."""
+    chroma_client = get_chroma_client()
+    standard_name = get_notebook_collection_name(notebook_id, use_advanced_indexing=False)
+    advanced_name = get_notebook_collection_name(notebook_id, use_advanced_indexing=True)
+
+    try:
+        chroma_client.delete_collection(name=standard_name)
+        logger.info(f"Deleted collection: {standard_name}")
+    except Exception as e:
+        logger.warning(f"Could not delete collection {standard_name}: {e}")
+
+    try:
+        chroma_client.delete_collection(name=advanced_name)
+        logger.info(f"Deleted collection: {advanced_name}")
+    except Exception as e:
+        logger.warning(f"Could not delete collection {advanced_name}: {e}")
+
+async def index_files_for_notebook(notebook_id: int, file_paths: list[str], use_advanced_indexing: bool):
+    """Indexes a specific list of files into a notebook's dedicated ChromaDB collection."""
+    collection_name = get_notebook_collection_name(notebook_id, use_advanced_indexing)
+    logger.info(f"Indexing for notebook {notebook_id} into collection: {collection_name}")
+    chroma_client = get_chroma_client()
+    collection = create_collection(chroma_client, name=collection_name)
+
+    if use_advanced_indexing:
+        logger.info(f"Using advanced indexing for notebook {notebook_id}.")
+        all_elements = []
+        poppler_present = is_poppler_installed()
+        tesseract_present = is_tesseract_installed()
+
+        if not poppler_present: logger.warning("Poppler not found. PDF parsing will be degraded.")
+        if not tesseract_present: logger.warning("Tesseract not found. Image parsing will be skipped.")
+
+        for filename in file_paths:
+            try:
+                file_ext = os.path.splitext(filename)[1].lower()
+                if file_ext in ['.jpg', '.jpeg', '.png'] and not tesseract_present:
+                    continue
+
+                strategy = "hi_res" if file_ext == ".pdf" and poppler_present else "fast"
+                elements = partition(filename=filename, strategy=strategy)
+                for element in elements:
+                    element.metadata.filename = os.path.basename(filename)
+                    element.metadata.file_path = filename
+                all_elements.extend(elements)
+            except Exception as e:
+                logger.error(f"Failed to process {filename} for notebook {notebook_id}: {e}")
+
+        index_documents_unstructured(all_elements, collection)
+    else:
+        logger.info(f"Using standard indexing for notebook {notebook_id}.")
+        reader = SimpleDirectoryReader(input_files=file_paths, errors='warn')
+        documents = reader.load_data()
+        logger.info(f"Loaded {len(documents)} document(s) for notebook {notebook_id}.")
+        index_documents(documents, collection)

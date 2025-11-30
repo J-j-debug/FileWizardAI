@@ -1,0 +1,839 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - button "Dark Mode" [ref=e4] [cursor=pointer]:
+      - img [ref=e5]: dark_mode
+      - text: Dark Mode
+    - generic [ref=e7]:
+      - heading "Welcome to FileWizard AI" [level=1] [ref=e8]
+      - paragraph [ref=e9]: Intelligent file management at your fingertips
+      - generic [ref=e10]:
+        - button "Configuration LLM" [ref=e11]:
+          - img [ref=e12]: settings
+          - generic [ref=e13]: Configuration LLM
+        - link "View on GitHub" [ref=e16] [cursor=pointer]:
+          - /url: https://github.com/AIxHunter/FileWizardAI/tree/main
+          - generic [ref=e17]:
+            - img [ref=e18]
+            - generic [ref=e20]: View on GitHub
+            - img [ref=e21]: arrow_forward
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e26]:
+          - img [ref=e27]: folder_open
+          - generic [ref=e28]:
+            - heading "File Structure Manager" [level=2] [ref=e29]
+            - paragraph [ref=e30]: Configure and organize your files intelligently
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - text: Root Path
+            - textbox "Root Path" [ref=e36]:
+              - /placeholder: Click the folder icon to select a directory
+          - img [ref=e39]: folder_open
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - heading "File Extensions" [level=3] [ref=e43]
+            - generic [ref=e44]:
+              - button "Select All" [ref=e45]:
+                - img [ref=e46]: select_all
+                - generic [ref=e47]: Select All
+              - button "Clear" [ref=e50]:
+                - img [ref=e51]: clear_all
+                - generic [ref=e52]: Clear
+          - generic [ref=e55]:
+            - generic [ref=e57] [cursor=pointer]:
+              - generic [ref=e58]:
+                - img [ref=e59]: description
+                - generic [ref=e60]: Documents
+              - generic [ref=e61]:
+                - text: 0/5
+                - img [ref=e62]: expand_more
+            - generic [ref=e64] [cursor=pointer]:
+              - generic [ref=e65]:
+                - img [ref=e66]: image
+                - generic [ref=e67]: Images
+              - generic [ref=e68]:
+                - text: 0/5
+                - img [ref=e69]: expand_more
+            - generic [ref=e71] [cursor=pointer]:
+              - generic [ref=e72]:
+                - img [ref=e73]: audiotrack
+                - generic [ref=e74]: Audio
+              - generic [ref=e75]:
+                - text: 0/5
+                - img [ref=e76]: expand_more
+            - generic [ref=e78] [cursor=pointer]:
+              - generic [ref=e79]:
+                - img [ref=e80]: movie
+                - generic [ref=e81]: Video
+              - generic [ref=e82]:
+                - text: 0/5
+                - img [ref=e83]: expand_more
+            - generic [ref=e85] [cursor=pointer]:
+              - generic [ref=e86]:
+                - img [ref=e87]: folder_zip
+                - generic [ref=e88]: Archives
+              - generic [ref=e89]:
+                - text: 0/5
+                - img [ref=e90]: expand_more
+            - generic [ref=e92] [cursor=pointer]:
+              - generic [ref=e93]:
+                - img [ref=e94]: code
+                - generic [ref=e95]: Code
+              - generic [ref=e96]:
+                - text: 0/9
+                - img [ref=e97]: expand_more
+            - generic [ref=e99] [cursor=pointer]:
+              - generic [ref=e100]:
+                - img [ref=e101]: storage
+                - generic [ref=e102]: Data
+              - generic [ref=e103]:
+                - text: 0/6
+                - img [ref=e104]: expand_more
+        - generic [ref=e105]:
+          - generic [ref=e107]:
+            - generic [ref=e108] [cursor=pointer]:
+              - checkbox "Include Subdirectories" [ref=e110]
+              - generic:
+                - img
+            - generic [ref=e111] [cursor=pointer]: Include Subdirectories
+          - button "GET FILES" [ref=e112]:
+            - img [ref=e113]: search
+            - generic [ref=e114]: GET FILES
+          - generic [ref=e117]:
+            - generic [ref=e119]:
+              - generic [ref=e120] [cursor=pointer]:
+                - checkbox "Advanced Indexing (Unstructured)" [ref=e122]
+                - generic:
+                  - img
+              - generic [ref=e123] [cursor=pointer]: Advanced Indexing (Unstructured)
+            - button "INDEX FILES" [ref=e124]:
+              - img [ref=e125]: api
+              - generic [ref=e126]: INDEX FILES
+      - generic [ref=e129]:
+        - generic [ref=e131]:
+          - img [ref=e132]: search
+          - generic [ref=e133]:
+            - heading "File Search" [level=2] [ref=e134]
+            - paragraph [ref=e135]: Search and locate files in your directory
+        - generic [ref=e137]:
+          - generic [ref=e142]:
+            - text: Search text
+            - textbox "Search text" [ref=e143]:
+              - /placeholder: Ask a question about your documents
+          - generic [ref=e149]:
+            - text: Search In
+            - combobox "Search In Recherche Standard" [ref=e150]:
+              - generic [ref=e151] [cursor=pointer]:
+                - generic [ref=e153]: Recherche Standard
+                - img [ref=e156]
+          - generic [ref=e163]:
+            - text: Top K
+            - spinbutton "Top K" [ref=e164]: "5"
+          - button "Search" [ref=e166]:
+            - generic [ref=e167]: Search
+          - button [ref=e170] [cursor=pointer]:
+            - img [ref=e171]: settings
+  - iframe [ref=e175]:
+    - generic [ref=f1e2]:
+      - text: "Compiled with problems:"
+      - button "X" [ref=f1e3] [cursor=pointer]
+      - generic [ref=f1e4]:
+        - text: ERROR in ./src/app/app.module.ts 13:0-77
+        - generic [ref=f1e5]: "Module not found: Error: Can't resolve './components/notebook-view.component' in '/app/frontend/src/app'"
+      - generic [ref=f1e6]:
+        - text: ERROR in ./src/app/components/research-hub.component.ts
+        - generic [ref=f1e7]: "Module build failed (from ./node_modules/@ngtools/webpack/src/ivy/index.js): Error: ENOENT: no such file or directory, open '/app/frontend/src/app/components/research-hub.component.ts' at Object.openSync (node:fs:561:18) at Object.readFileSync (node:fs:445:35) at CacheBackend.provideSync (/app/frontend/node_modules/enhanced-resolve/lib/CachedInputFileSystem.js:332:58) at Object.readFile (/app/frontend/node_modules/@ngtools/webpack/src/ivy/system.js:51:30) at Object.readFile (/app/frontend/node_modules/typescript/lib/typescript.js:118558:59) at host.readFile (/app/frontend/node_modules/typescript/lib/typescript.js:118601:41) at Object.getSourceFile (/app/frontend/node_modules/typescript/lib/typescript.js:118505:37) at compilerHost.getSourceFile (/app/frontend/node_modules/typescript/lib/typescript.js:126281:53) at host.getSourceFile (/app/frontend/node_modules/@ngtools/webpack/src/ivy/host.js:254:40) at ShimAdapter.maybeGenerate (file:///app/frontend/node_modules/@angular/compiler-cli/bundles/chunk-M65TNV27.js:735:37)"
+      - generic [ref=f1e8]:
+        - text: ERROR
+        - generic [ref=f1e9]:
+          - text: src/app/app.component.ts:21:9 - error
+          - generic [ref=f1e10]:
+            - text: "NG8001:"
+            - generic [ref=f1e11]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 21 <mat-icon>{{ isDarkTheme ? 'light_mode' : 'dark_mode' }}</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e12]:
+        - text: ERROR
+        - generic [ref=f1e13]:
+          - text: src/app/app.component.ts:39:15 - error
+          - generic [ref=f1e14]:
+            - text: "NG8001:"
+            - generic [ref=f1e15]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 39 <mat-icon>settings</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e16]:
+        - text: ERROR
+        - generic [ref=f1e17]:
+          - text: src/app/app.component.ts:48:17 - error
+          - generic [ref=f1e18]:
+            - text: "NG8001:"
+            - generic [ref=f1e19]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 48 <mat-icon class=\"arrow\">arrow_forward</mat-icon> ~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e20]:
+        - text: ERROR
+        - generic [ref=f1e21]:
+          - text: src/app/app.component.ts:59:13 - error
+          - generic [ref=f1e22]:
+            - text: "NG8001:"
+            - generic [ref=f1e23]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 59 <mat-icon>close</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e24]:
+        - text: ERROR
+        - generic [ref=f1e25]:
+          - text: src/app/app.component.ts:61:11 - error
+          - generic [ref=f1e26]:
+            - text: "NG8001:"
+            - generic [ref=f1e27]: "'app-llm-settings' is not a known element: 1. If 'app-llm-settings' is an Angular component, then verify that it is part of this module. 2. If 'app-llm-settings' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 61 <app-llm-settings></app-llm-settings> ~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e28]:
+        - text: ERROR
+        - generic [ref=f1e29]:
+          - text: src/app/app.component.ts:70:17 - error
+          - generic [ref=f1e30]:
+            - text: "NG8001:"
+            - generic [ref=f1e31]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 70 <mat-icon>folder_open</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e32]:
+        - text: ERROR
+        - generic [ref=f1e33]:
+          - text: src/app/app.component.ts:79:15 - error
+          - generic [ref=f1e34]:
+            - text: "NG8001:"
+            - generic [ref=f1e35]: "'mat-form-field' is not a known element: 1. If 'mat-form-field' is an Angular component, then verify that it is part of this module. 2. If 'mat-form-field' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 79 <mat-form-field appearance=\"outline\" class=\"root-path-field\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e36]:
+        - text: ERROR
+        - generic [ref=f1e37]:
+          - text: src/app/app.component.ts:80:17 - error
+          - generic [ref=f1e38]:
+            - text: "NG8001:"
+            - generic [ref=f1e39]: "'mat-label' is not a known element: 1. If 'mat-label' is an Angular component, then verify that it is part of this module. 2. If 'mat-label' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 80 <mat-label>Root Path</mat-label> ~~~~~~~~~~~"
+      - generic [ref=f1e40]:
+        - text: ERROR
+        - generic [ref=f1e41]:
+          - text: src/app/app.component.ts:81:33 - error
+          - generic [ref=f1e42]:
+            - text: "NG8002:"
+            - generic [ref=f1e43]: Can't bind to 'ngModel' since it isn't a known property of 'input'. 81 <input matInput [(ngModel)]="rootPath" (ngModelChange)="onPathChange($event)" placeholder="Click the folder icon to select a directory"> ~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e44]:
+        - text: ERROR
+        - generic [ref=f1e45]:
+          - text: src/app/app.component.ts:81:46 - error
+          - generic [ref=f1e46]:
+            - text: "TS2322:"
+            - generic [ref=f1e47]: Type 'Event' is not assignable to type 'string'. 81 <input matInput [(ngModel)]="rootPath" (ngModelChange)="onPathChange($event)" placeholder="Click the folder icon to select a directory"> ~~~~~~~~~~~~~~~~
+      - generic [ref=f1e48]:
+        - text: ERROR
+        - generic [ref=f1e49]:
+          - text: src/app/app.component.ts:81:86 - error
+          - generic [ref=f1e50]:
+            - text: "TS2345:"
+            - generic [ref=f1e51]: Argument of type 'Event' is not assignable to parameter of type 'string'. 81 <input matInput [(ngModel)]="rootPath" (ngModelChange)="onPathChange($event)" placeholder="Click the folder icon to select a directory"> ~~~~~~
+      - generic [ref=f1e52]:
+        - text: ERROR
+        - generic [ref=f1e53]:
+          - text: src/app/app.component.ts:82:17 - error
+          - generic [ref=f1e54]:
+            - text: "NG8001:"
+            - generic [ref=f1e55]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 82 <mat-icon matSuffix>folder_open</mat-icon> ~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e56]:
+        - text: ERROR
+        - generic [ref=f1e57]:
+          - text: src/app/app.component.ts:91:21 - error
+          - generic [ref=f1e58]:
+            - text: "NG8001:"
+            - generic [ref=f1e59]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 91 <mat-icon>select_all</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e60]:
+        - text: ERROR
+        - generic [ref=f1e61]:
+          - text: src/app/app.component.ts:95:21 - error
+          - generic [ref=f1e62]:
+            - text: "NG8001:"
+            - generic [ref=f1e63]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 95 <mat-icon>clear_all</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e64]:
+        - text: ERROR
+        - generic [ref=f1e65]:
+          - text: src/app/app.component.ts:105:23 - error
+          - generic [ref=f1e66]:
+            - text: "NG8001:"
+            - generic [ref=f1e67]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 105 <mat-icon>{{group.icon}}</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e68]:
+        - text: ERROR
+        - generic [ref=f1e69]:
+          - text: src/app/app.component.ts:110:23 - error
+          - generic [ref=f1e70]:
+            - text: "NG8001:"
+            - generic [ref=f1e71]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 110 <mat-icon class=\"expand-icon\" [class.expanded]=\"group.expanded\">expand_more</mat-icon> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e72]:
+        - text: ERROR
+        - generic [ref=f1e73]:
+          - text: src/app/app.component.ts:114:21 - error
+          - generic [ref=f1e74]:
+            - text: "NG8001:"
+            - generic [ref=f1e75]: "'mat-checkbox' is not a known element: 1. If 'mat-checkbox' is an Angular component, then verify that it is part of this module. 2. If 'mat-checkbox' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 114 <mat-checkbox *ngFor=\"let ext of group.extensions\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            - generic [ref=f1e76]: 115 [checked]="isExtensionSelected(ext)" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            - text: "116"
+            - generic [ref=f1e77]: (change)="toggleExtension(ext, group)" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e78]: 117 color="primary"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e79]:
+        - text: ERROR
+        - generic [ref=f1e80]:
+          - text: src/app/app.component.ts:115:33 - error
+          - generic [ref=f1e81]:
+            - text: "NG8002:"
+            - generic [ref=f1e82]: Can't bind to 'checked' since it isn't a known property of 'mat-checkbox'. 1. If 'mat-checkbox' is an Angular component and it has 'checked' input, then verify that it is part of this module. 2. If 'mat-checkbox' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 115 [checked]="isExtensionSelected(ext)" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e83]:
+        - text: ERROR
+        - generic [ref=f1e84]:
+          - text: src/app/app.component.ts:126:15 - error
+          - generic [ref=f1e85]:
+            - text: "NG8001:"
+            - generic [ref=f1e86]: "'mat-checkbox' is not a known element: 1. If 'mat-checkbox' is an Angular component, then verify that it is part of this module. 2. If 'mat-checkbox' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 126 <mat-checkbox [(ngModel)]=\"isRecursive\" color=\"primary\" class=\"subdirectories-check\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e87]:
+        - text: ERROR
+        - generic [ref=f1e88]:
+          - text: src/app/app.component.ts:126:29 - error
+          - generic [ref=f1e89]:
+            - text: "NG8002:"
+            - generic [ref=f1e90]: Can't bind to 'ngModel' since it isn't a known property of 'mat-checkbox'. 1. If 'mat-checkbox' is an Angular component and it has 'ngModel' input, then verify that it is part of this module. 2. If 'mat-checkbox' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 126 <mat-checkbox [(ngModel)]="isRecursive" color="primary" class="subdirectories-check"> ~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e91]:
+        - text: ERROR
+        - generic [ref=f1e92]:
+          - text: src/app/app.component.ts:126:42 - error
+          - generic [ref=f1e93]:
+            - text: "TS2322:"
+            - generic [ref=f1e94]: Type 'Event' is not assignable to type 'boolean'. 126 <mat-checkbox [(ngModel)]="isRecursive" color="primary" class="subdirectories-check"> ~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e95]:
+        - text: ERROR
+        - generic [ref=f1e96]:
+          - text: src/app/app.component.ts:131:17 - error
+          - generic [ref=f1e97]:
+            - text: "NG8001:"
+            - generic [ref=f1e98]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 131 <mat-icon>search</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e99]:
+        - text: ERROR
+        - generic [ref=f1e100]:
+          - text: src/app/app.component.ts:135:17 - error
+          - generic [ref=f1e101]:
+            - text: "NG8001:"
+            - generic [ref=f1e102]: "'mat-checkbox' is not a known element: 1. If 'mat-checkbox' is an Angular component, then verify that it is part of this module. 2. If 'mat-checkbox' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 135 <mat-checkbox [(ngModel)]=\"useAdvancedIndexing\" color=\"accent\" class=\"subdirectories-check\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e103]:
+        - text: ERROR
+        - generic [ref=f1e104]:
+          - text: src/app/app.component.ts:135:31 - error
+          - generic [ref=f1e105]:
+            - text: "NG8002:"
+            - generic [ref=f1e106]: Can't bind to 'ngModel' since it isn't a known property of 'mat-checkbox'. 1. If 'mat-checkbox' is an Angular component and it has 'ngModel' input, then verify that it is part of this module. 2. If 'mat-checkbox' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 135 <mat-checkbox [(ngModel)]="useAdvancedIndexing" color="accent" class="subdirectories-check"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e107]:
+        - text: ERROR
+        - generic [ref=f1e108]:
+          - text: src/app/app.component.ts:135:44 - error
+          - generic [ref=f1e109]:
+            - text: "TS2322:"
+            - generic [ref=f1e110]: Type 'Event' is not assignable to type 'boolean'. 135 <mat-checkbox [(ngModel)]="useAdvancedIndexing" color="accent" class="subdirectories-check"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e111]:
+        - text: ERROR
+        - generic [ref=f1e112]:
+          - text: src/app/app.component.ts:139:19 - error
+          - generic [ref=f1e113]:
+            - text: "NG8001:"
+            - generic [ref=f1e114]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 139 <mat-icon>api</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e115]:
+        - text: ERROR
+        - generic [ref=f1e116]:
+          - text: src/app/app.component.ts:149:17 - error
+          - generic [ref=f1e117]:
+            - text: "NG8001:"
+            - generic [ref=f1e118]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 149 <mat-icon>search</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e119]:
+        - text: ERROR
+        - generic [ref=f1e120]:
+          - text: src/app/app.component.ts:157:13 - error
+          - generic [ref=f1e121]:
+            - text: "NG8001:"
+            - generic [ref=f1e122]: "'app-search-files' is not a known element: 1. If 'app-search-files' is an Angular component, then verify that it is part of this module. 2. If 'app-search-files' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 157 <app-search-files [rootPath]=\"rootPath\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            - generic [ref=f1e123]: 158 [isRecursive]="isRecursive" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            - text: "159"
+            - generic [ref=f1e124]: "[filesExts]=\"filesExts\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e125]:
+        - text: ERROR
+        - generic [ref=f1e126]:
+          - text: src/app/app.component.ts:157:31 - error
+          - generic [ref=f1e127]:
+            - text: "NG8002:"
+            - generic [ref=f1e128]: Can't bind to 'rootPath' since it isn't a known property of 'app-search-files'. 1. If 'app-search-files' is an Angular component and it has 'rootPath' input, then verify that it is part of this module. 2. If 'app-search-files' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 157 <app-search-files [rootPath]="rootPath" ~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e129]:
+        - text: ERROR
+        - generic [ref=f1e130]:
+          - text: src/app/app.component.ts:158:30 - error
+          - generic [ref=f1e131]:
+            - text: "NG8002:"
+            - generic [ref=f1e132]: Can't bind to 'isRecursive' since it isn't a known property of 'app-search-files'. 1. If 'app-search-files' is an Angular component and it has 'isRecursive' input, then verify that it is part of this module. 2. If 'app-search-files' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 158 [isRecursive]="isRecursive" ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e133]:
+        - text: ERROR
+        - generic [ref=f1e134]:
+          - text: src/app/app.component.ts:159:30 - error
+          - generic [ref=f1e135]:
+            - text: "NG8002:"
+            - generic [ref=f1e136]: Can't bind to 'filesExts' since it isn't a known property of 'app-search-files'. 1. If 'app-search-files' is an Angular component and it has 'filesExts' input, then verify that it is part of this module. 2. If 'app-search-files' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 159 [filesExts]="filesExts"> ~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e137]:
+        - text: ERROR
+        - generic [ref=f1e138]:
+          - text: src/app/app.component.ts:164:17 - error
+          - generic [ref=f1e139]:
+            - text: "NG8001:"
+            - generic [ref=f1e140]: "'app-folder-tree' is not a known element: 1. If 'app-folder-tree' is an Angular component, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 164 <app-folder-tree [paths]=\"srcPaths\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            - generic [ref=f1e141]: 165 [rootPath]="rootPath" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            - text: ...
+            - generic [ref=f1e142]: 167 [index]=0 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e143]: 168 (notify)="onNotify($event)"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e144]:
+        - text: ERROR
+        - generic [ref=f1e145]:
+          - text: src/app/app.component.ts:164:34 - error
+          - generic [ref=f1e146]:
+            - text: "NG8002:"
+            - generic [ref=f1e147]: Can't bind to 'paths' since it isn't a known property of 'app-folder-tree'. 1. If 'app-folder-tree' is an Angular component and it has 'paths' input, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 164 <app-folder-tree [paths]="srcPaths" ~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e148]:
+        - text: ERROR
+        - generic [ref=f1e149]:
+          - text: src/app/app.component.ts:165:32 - error
+          - generic [ref=f1e150]:
+            - text: "NG8002:"
+            - generic [ref=f1e151]: Can't bind to 'rootPath' since it isn't a known property of 'app-folder-tree'. 1. If 'app-folder-tree' is an Angular component and it has 'rootPath' input, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 165 [rootPath]="rootPath" ~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e152]:
+        - text: ERROR
+        - generic [ref=f1e153]:
+          - text: src/app/app.component.ts:166:32 - error
+          - generic [ref=f1e154]:
+            - text: "NG8002:"
+            - generic [ref=f1e155]: Can't bind to 'headline' since it isn't a known property of 'app-folder-tree'. 1. If 'app-folder-tree' is an Angular component and it has 'headline' input, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 166 [headline]="'Current Structure'" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e156]:
+        - text: ERROR
+        - generic [ref=f1e157]:
+          - text: src/app/app.component.ts:167:32 - error
+          - generic [ref=f1e158]:
+            - text: "NG8002:"
+            - generic [ref=f1e159]: Can't bind to 'index' since it isn't a known property of 'app-folder-tree'. 1. If 'app-folder-tree' is an Angular component and it has 'index' input, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 167 [index]=0 ~~~~~~~~~
+      - generic [ref=f1e160]:
+        - text: ERROR
+        - generic [ref=f1e161]:
+          - text: src/app/app.component.ts:173:17 - error
+          - generic [ref=f1e162]:
+            - text: "NG8001:"
+            - generic [ref=f1e163]: "'app-folder-tree' is not a known element: 1. If 'app-folder-tree' is an Angular component, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 173 <app-folder-tree [paths]=\"dstPaths\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            - generic [ref=f1e164]: 174 [rootPath]="rootPath" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            - text: ...
+            - generic [ref=f1e165]: 176 [index]=1 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e166]: 177 (notify)="onNotify($event)"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e167]:
+        - text: ERROR
+        - generic [ref=f1e168]:
+          - text: src/app/app.component.ts:173:34 - error
+          - generic [ref=f1e169]:
+            - text: "NG8002:"
+            - generic [ref=f1e170]: Can't bind to 'paths' since it isn't a known property of 'app-folder-tree'. 1. If 'app-folder-tree' is an Angular component and it has 'paths' input, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 173 <app-folder-tree [paths]="dstPaths" ~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e171]:
+        - text: ERROR
+        - generic [ref=f1e172]:
+          - text: src/app/app.component.ts:174:32 - error
+          - generic [ref=f1e173]:
+            - text: "NG8002:"
+            - generic [ref=f1e174]: Can't bind to 'rootPath' since it isn't a known property of 'app-folder-tree'. 1. If 'app-folder-tree' is an Angular component and it has 'rootPath' input, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 174 [rootPath]="rootPath" ~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e175]:
+        - text: ERROR
+        - generic [ref=f1e176]:
+          - text: src/app/app.component.ts:175:32 - error
+          - generic [ref=f1e177]:
+            - text: "NG8002:"
+            - generic [ref=f1e178]: Can't bind to 'headline' since it isn't a known property of 'app-folder-tree'. 1. If 'app-folder-tree' is an Angular component and it has 'headline' input, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 175 [headline]="'Optimized Structure'" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e179]:
+        - text: ERROR
+        - generic [ref=f1e180]:
+          - text: src/app/app.component.ts:176:32 - error
+          - generic [ref=f1e181]:
+            - text: "NG8002:"
+            - generic [ref=f1e182]: Can't bind to 'index' since it isn't a known property of 'app-folder-tree'. 1. If 'app-folder-tree' is an Angular component and it has 'index' input, then verify that it is part of this module. 2. If 'app-folder-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 176 [index]=1 ~~~~~~~~~
+      - generic [ref=f1e183]:
+        - text: ERROR
+        - generic [ref=f1e184]:
+          - text: src/app/app.component.ts:184:17 - error
+          - generic [ref=f1e185]:
+            - text: "NG8001:"
+            - generic [ref=f1e186]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 184 <mat-icon>auto_fix_high</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e187]:
+        - text: ERROR
+        - generic [ref=f1e188]:
+          - text: src/app/app.component.ts:190:19 - error
+          - generic [ref=f1e189]:
+            - text: "NG8001:"
+            - generic [ref=f1e190]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 190 <mat-icon>check_circle</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e191]:
+        - text: ERROR
+        - generic [ref=f1e192]:
+          - text: src/app/app.component.ts:194:19 - error
+          - generic [ref=f1e193]:
+            - text: "NG8001:"
+            - generic [ref=f1e194]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 194 <mat-icon>error</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e195]:
+        - text: ERROR
+        - generic [ref=f1e196]:
+          - text: src/app/app.component.ts:204:11 - error
+          - generic [ref=f1e197]:
+            - text: "NG8001:"
+            - generic [ref=f1e198]: "'app-research-hub' is not a known element: 1. If 'app-research-hub' is an Angular component, then verify that it is part of this module. 2. If 'app-research-hub' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 204 <app-research-hub></app-research-hub> ~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e199]:
+        - text: ERROR
+        - generic [ref=f1e200]:
+          - text: src/app/app.module.ts:12:38 - error
+          - generic [ref=f1e201]:
+            - text: "TS2307:"
+            - generic [ref=f1e202]: "Cannot find module './components/research-hub.component' or its corresponding type declarations. 12 import { ResearchHubComponent } from './components/research-hub.component'; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e203]:
+        - text: ERROR
+        - generic [ref=f1e204]:
+          - text: src/app/app.module.ts:13:39 - error
+          - generic [ref=f1e205]:
+            - text: "TS2307:"
+            - generic [ref=f1e206]: "Cannot find module './components/notebook-view.component' or its corresponding type declarations. 13 import { NotebookViewComponent } from './components/notebook-view.component'; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e207]:
+        - text: ERROR
+        - generic [ref=f1e208]:
+          - text: src/app/app.module.ts:38:12 - error
+          - generic [ref=f1e209]:
+            - text: "NG1010:"
+            - generic [ref=f1e210]: "Value at position 19 in the NgModule.imports of AppModule is not a reference Value could not be determined statically. 38 imports: [ ~"
+            - generic [ref=f1e211]: 39 BrowserModule, ~~~~~~~~~~~~~~~~~~
+            - text: ...
+            - generic [ref=f1e212]: 63 NotebookViewComponent ~~~~~~~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e213]: 64 ], ~~~ src/app/app.module.ts:62:5 62 ResearchHubComponent, ~~~~~~~~~~~~~~~~~~~~ Unknown reference.
+      - generic [ref=f1e214]:
+        - text: ERROR
+        - generic [ref=f1e215]:
+          - text: src/app/components/folder-tree.component.ts:31:9 - error
+          - generic [ref=f1e216]:
+            - text: "NG8001:"
+            - generic [ref=f1e217]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 31 <mat-icon class=\"header-icon pulse\">{{ headline === 'Current Structure' ? 'folder_open' : 'auto_fix_high' }}</mat-icon> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e218]:
+        - text: ERROR
+        - generic [ref=f1e219]:
+          - text: src/app/components/folder-tree.component.ts:34:7 - error
+          - generic [ref=f1e220]:
+            - text: "NG8001:"
+            - generic [ref=f1e221]: "'mat-tree' is not a known element: 1. If 'mat-tree' is an Angular component, then verify that it is part of this module. 2. If 'mat-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 34 <mat-tree [dataSource]=\"dataSource\" [treeControl]=\"treeControl\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e222]:
+        - text: ERROR
+        - generic [ref=f1e223]:
+          - text: src/app/components/folder-tree.component.ts:34:17 - error
+          - generic [ref=f1e224]:
+            - text: "NG8002:"
+            - generic [ref=f1e225]: Can't bind to 'dataSource' since it isn't a known property of 'mat-tree'. 1. If 'mat-tree' is an Angular component and it has 'dataSource' input, then verify that it is part of this module. 2. If 'mat-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 34 <mat-tree [dataSource]="dataSource" [treeControl]="treeControl"> ~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e226]:
+        - text: ERROR
+        - generic [ref=f1e227]:
+          - text: src/app/components/folder-tree.component.ts:34:43 - error
+          - generic [ref=f1e228]:
+            - text: "NG8002:"
+            - generic [ref=f1e229]: Can't bind to 'treeControl' since it isn't a known property of 'mat-tree'. 1. If 'mat-tree' is an Angular component and it has 'treeControl' input, then verify that it is part of this module. 2. If 'mat-tree' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 34 <mat-tree [dataSource]="dataSource" [treeControl]="treeControl"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e230]:
+        - text: ERROR
+        - generic [ref=f1e231]:
+          - text: src/app/components/folder-tree.component.ts:35:9 - error
+          - generic [ref=f1e232]:
+            - text: "NG8001:"
+            - generic [ref=f1e233]: "'mat-tree-node' is not a known element: 1. If 'mat-tree-node' is an Angular component, then verify that it is part of this module. 2. If 'mat-tree-node' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 35 <mat-tree-node *matTreeNodeDef=\"let node\" matTreeNodePadding class=\"fade-in\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e234]:
+        - text: ERROR
+        - generic [ref=f1e235]:
+          - text: src/app/components/folder-tree.component.ts:37:11 - error
+          - generic [ref=f1e236]:
+            - text: "NG8001:"
+            - generic [ref=f1e237]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 37 <mat-icon class=\"type-icon\" [class.highlight]=\"isSelected(node)\">{{ getNodeIcon(node) }}</mat-icon> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e238]:
+        - text: ERROR
+        - generic [ref=f1e239]:
+          - text: src/app/components/folder-tree.component.ts:43:9 - error
+          - generic [ref=f1e240]:
+            - text: "NG8001:"
+            - generic [ref=f1e241]: "'mat-tree-node' is not a known element: 1. If 'mat-tree-node' is an Angular component, then verify that it is part of this module. 2. If 'mat-tree-node' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 43 <mat-tree-node *matTreeNodeDef=\"let node; when: hasChild\" matTreeNodePadding class=\"fade-in\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e242]:
+        - text: ERROR
+        - generic [ref=f1e243]:
+          - text: src/app/components/folder-tree.component.ts:45:13 - error
+          - generic [ref=f1e244]:
+            - text: "NG8001:"
+            - generic [ref=f1e245]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 45 <mat-icon class=\"folder-icon\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e246]:
+        - text: ERROR
+        - generic [ref=f1e247]:
+          - text: src/app/components/folder-tree.component.ts:52:11 - error
+          - generic [ref=f1e248]:
+            - text: "NG8001:"
+            - generic [ref=f1e249]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 52 <mat-icon *ngIf=\"index < 2\" matTooltip=\"Show folder in the other Tree\" (click)=\"notifyParent(node)\" class=\"action-icon\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e250]:
+        - text: ERROR
+        - generic [ref=f1e251]:
+          - text: src/app/components/llm-settings.component.ts:30:31 - error
+          - generic [ref=f1e252]:
+            - text: "NG8002:"
+            - generic [ref=f1e253]: Can't bind to 'ngModel' since it isn't a known property of 'select'. 30 <select id="provider" [(ngModel)]="selectedProvider" (change)="onProviderChange()"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e254]:
+        - text: ERROR
+        - generic [ref=f1e255]:
+          - text: src/app/components/llm-settings.component.ts:30:44 - error
+          - generic [ref=f1e256]:
+            - text: "TS2322:"
+            - generic [ref=f1e257]: Type 'Event' is not assignable to type 'string'. 30 <select id="provider" [(ngModel)]="selectedProvider" (change)="onProviderChange()"> ~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e258]:
+        - text: ERROR
+        - generic [ref=f1e259]:
+          - text: src/app/components/llm-settings.component.ts:45:36 - error
+          - generic [ref=f1e260]:
+            - text: "NG8002:"
+            - generic [ref=f1e261]: Can't bind to 'ngModel' since it isn't a known property of 'select'. 45 <select id="textModel" [(ngModel)]="config.text_model"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e262]:
+        - text: ERROR
+        - generic [ref=f1e263]:
+          - text: src/app/components/llm-settings.component.ts:45:49 - error
+          - generic [ref=f1e264]:
+            - text: "TS2322:"
+            - generic [ref=f1e265]: Type 'Event' is not assignable to type 'string'. 45 <select id="textModel" [(ngModel)]="config.text_model"> ~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e266]: 46 <option *ngFor="let model of currentProvider?.text_models" [value]="model"> ~~~~~
+      - generic [ref=f1e267]:
+        - text: ERROR
+        - generic [ref=f1e268]:
+          - text: src/app/components/llm-settings.component.ts:57:15 - error
+          - generic [ref=f1e269]:
+            - text: "NG8002:"
+            - generic [ref=f1e270]: Can't bind to 'ngModel' since it isn't a known property of 'input'. 57 [(ngModel)]="textApiKeysInput" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e271]:
+        - text: ERROR
+        - generic [ref=f1e272]:
+          - text: src/app/components/llm-settings.component.ts:57:28 - error
+          - generic [ref=f1e273]:
+            - text: "TS2322:"
+            - generic [ref=f1e274]: Type 'Event' is not assignable to type 'string'. 57 [(ngModel)]="textApiKeysInput" ~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e275]: "58 [placeholder]=\"'Ex: ' + currentProvider?.api_key_prefix + 'xxx,' + currentProvider?.api_key_prefix + 'yyy'\" ~~~~~~"
+      - generic [ref=f1e276]:
+        - text: ERROR
+        - generic [ref=f1e277]:
+          - text: src/app/components/llm-settings.component.ts:67:37 - error
+          - generic [ref=f1e278]:
+            - text: "NG8002:"
+            - generic [ref=f1e279]: Can't bind to 'ngModel' since it isn't a known property of 'select'. 67 <select id="imageModel" [(ngModel)]="config.image_model"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e280]:
+        - text: ERROR
+        - generic [ref=f1e281]:
+          - text: src/app/components/llm-settings.component.ts:67:50 - error
+          - generic [ref=f1e282]:
+            - text: "TS2322:"
+            - generic [ref=f1e283]: Type 'Event' is not assignable to type 'string'. 67 <select id="imageModel" [(ngModel)]="config.image_model"> ~~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e284]: 68 <option *ngFor="let model of currentProvider?.image_models" [value]="model"> ~~~~~
+      - generic [ref=f1e285]:
+        - text: ERROR
+        - generic [ref=f1e286]:
+          - text: src/app/components/llm-settings.component.ts:79:15 - error
+          - generic [ref=f1e287]:
+            - text: "NG8002:"
+            - generic [ref=f1e288]: Can't bind to 'ngModel' since it isn't a known property of 'input'. 79 [(ngModel)]="imageApiKeysInput" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e289]:
+        - text: ERROR
+        - generic [ref=f1e290]:
+          - text: src/app/components/llm-settings.component.ts:79:28 - error
+          - generic [ref=f1e291]:
+            - text: "TS2322:"
+            - generic [ref=f1e292]: Type 'Event' is not assignable to type 'string'. 79 [(ngModel)]="imageApiKeysInput" ~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e293]: "80 [placeholder]=\"'Ex: ' + currentProvider?.api_key_prefix + 'xxx,' + currentProvider?.api_key_prefix + 'yyy'\" ~~~~~~"
+      - generic [ref=f1e294]:
+        - text: ERROR
+        - generic [ref=f1e295]:
+          - text: src/app/components/search-files.component.ts:9:7 - error
+          - generic [ref=f1e296]:
+            - text: "NG8001:"
+            - generic [ref=f1e297]: "'mat-form-field' is not a known element: 1. If 'mat-form-field' is an Angular component, then verify that it is part of this module. 2. If 'mat-form-field' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 9 <mat-form-field class=\"search-input\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e298]:
+        - text: ERROR
+        - generic [ref=f1e299]:
+          - text: src/app/components/search-files.component.ts:10:9 - error
+          - generic [ref=f1e300]:
+            - text: "NG8001:"
+            - generic [ref=f1e301]: "'mat-label' is not a known element: 1. If 'mat-label' is an Angular component, then verify that it is part of this module. 2. If 'mat-label' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 10 <mat-label>Search text</mat-label> ~~~~~~~~~~~"
+      - generic [ref=f1e302]:
+        - text: ERROR
+        - generic [ref=f1e303]:
+          - text: src/app/components/search-files.component.ts:11:78 - error
+          - generic [ref=f1e304]:
+            - text: "NG8002:"
+            - generic [ref=f1e305]: Can't bind to 'ngModel' since it isn't a known property of 'textarea'. 11 <textarea matInput placeholder="Ask a question about your documents" [(ngModel)]="searchQuery"></textarea> ~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e306]:
+        - text: ERROR
+        - generic [ref=f1e307]:
+          - text: src/app/components/search-files.component.ts:11:91 - error
+          - generic [ref=f1e308]:
+            - text: "TS2322:"
+            - generic [ref=f1e309]: Type 'Event' is not assignable to type 'string'. 11 <textarea matInput placeholder="Ask a question about your documents" [(ngModel)]="searchQuery"></textarea> ~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e310]:
+        - text: ERROR
+        - generic [ref=f1e311]:
+          - text: src/app/components/search-files.component.ts:13:7 - error
+          - generic [ref=f1e312]:
+            - text: "NG8001:"
+            - generic [ref=f1e313]: "'mat-form-field' is not a known element: 1. If 'mat-form-field' is an Angular component, then verify that it is part of this module. 2. If 'mat-form-field' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 13 <mat-form-field class=\"collection-select\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e314]:
+        - text: ERROR
+        - generic [ref=f1e315]:
+          - text: src/app/components/search-files.component.ts:14:9 - error
+          - generic [ref=f1e316]:
+            - text: "NG8001:"
+            - generic [ref=f1e317]: "'mat-label' is not a known element: 1. If 'mat-label' is an Angular component, then verify that it is part of this module. 2. If 'mat-label' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 14 <mat-label>Search In</mat-label> ~~~~~~~~~~~"
+      - generic [ref=f1e318]:
+        - text: ERROR
+        - generic [ref=f1e319]:
+          - text: src/app/components/search-files.component.ts:15:9 - error
+          - generic [ref=f1e320]:
+            - text: "NG8001:"
+            - generic [ref=f1e321]: "'mat-select' is not a known element: 1. If 'mat-select' is an Angular component, then verify that it is part of this module. 2. If 'mat-select' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 15 <mat-select [(ngModel)]=\"selectedCollection\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e322]:
+        - text: ERROR
+        - generic [ref=f1e323]:
+          - text: src/app/components/search-files.component.ts:15:21 - error
+          - generic [ref=f1e324]:
+            - text: "NG8002:"
+            - generic [ref=f1e325]: Can't bind to 'ngModel' since it isn't a known property of 'mat-select'. 1. If 'mat-select' is an Angular component and it has 'ngModel' input, then verify that it is part of this module. 2. If 'mat-select' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 15 <mat-select [(ngModel)]="selectedCollection"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e326]:
+        - text: ERROR
+        - generic [ref=f1e327]:
+          - text: src/app/components/search-files.component.ts:15:34 - error
+          - generic [ref=f1e328]:
+            - text: "TS2322:"
+            - generic [ref=f1e329]: Type 'Event' is not assignable to type 'string'. 15 <mat-select [(ngModel)]="selectedCollection"> ~~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e330]: 16 <mat-option *ngFor="let collection of collections" [value]="collection.value"> ~~~~~
+      - generic [ref=f1e331]:
+        - text: ERROR
+        - generic [ref=f1e332]:
+          - text: src/app/components/search-files.component.ts:16:11 - error
+          - generic [ref=f1e333]:
+            - text: "NG8001:"
+            - generic [ref=f1e334]: "'mat-option' is not a known element: 1. If 'mat-option' is an Angular component, then verify that it is part of this module. 2. If 'mat-option' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 16 <mat-option *ngFor=\"let collection of collections\" [value]=\"collection.value\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e335]:
+        - text: ERROR
+        - generic [ref=f1e336]:
+          - text: src/app/components/search-files.component.ts:16:62 - error
+          - generic [ref=f1e337]:
+            - text: "NG8002:"
+            - generic [ref=f1e338]: Can't bind to 'value' since it isn't a known property of 'mat-option'. 1. If 'mat-option' is an Angular component and it has 'value' input, then verify that it is part of this module. 2. If 'mat-option' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 16 <mat-option *ngFor="let collection of collections" [value]="collection.value"> ~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e339]:
+        - text: ERROR
+        - generic [ref=f1e340]:
+          - text: src/app/components/search-files.component.ts:21:7 - error
+          - generic [ref=f1e341]:
+            - text: "NG8001:"
+            - generic [ref=f1e342]: "'mat-form-field' is not a known element: 1. If 'mat-form-field' is an Angular component, then verify that it is part of this module. 2. If 'mat-form-field' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 21 <mat-form-field class=\"top-k-input\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e343]:
+        - text: ERROR
+        - generic [ref=f1e344]:
+          - text: src/app/components/search-files.component.ts:22:9 - error
+          - generic [ref=f1e345]:
+            - text: "NG8001:"
+            - generic [ref=f1e346]: "'mat-label' is not a known element: 1. If 'mat-label' is an Angular component, then verify that it is part of this module. 2. If 'mat-label' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 22 <mat-label>Top K</mat-label> ~~~~~~~~~~~"
+      - generic [ref=f1e347]:
+        - text: ERROR
+        - generic [ref=f1e348]:
+          - text: src/app/components/search-files.component.ts:23:39 - error
+          - generic [ref=f1e349]:
+            - text: "NG8002:"
+            - generic [ref=f1e350]: Can't bind to 'ngModel' since it isn't a known property of 'input'. 23 <input matInput type="number" [(ngModel)]="topK" min="1" max="20"> ~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e351]:
+        - text: ERROR
+        - generic [ref=f1e352]:
+          - text: src/app/components/search-files.component.ts:23:52 - error
+          - generic [ref=f1e353]:
+            - text: "TS2322:"
+            - generic [ref=f1e354]: Type 'Event' is not assignable to type 'number'. 23 <input matInput type="number" [(ngModel)]="topK" min="1" max="20"> ~~~~~~~~~~~~
+      - generic [ref=f1e355]:
+        - text: ERROR
+        - generic [ref=f1e356]:
+          - text: src/app/components/search-files.component.ts:27:9 - error
+          - generic [ref=f1e357]:
+            - text: "NG8001:"
+            - generic [ref=f1e358]: "'mat-icon' is not a known element: 1. If 'mat-icon' is an Angular component, then verify that it is part of this module. 2. If 'mat-icon' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 27 <mat-icon>settings</mat-icon> ~~~~~~~~~~"
+      - generic [ref=f1e359]:
+        - text: ERROR
+        - generic [ref=f1e360]:
+          - text: src/app/components/search-files.component.ts:33:7 - error
+          - generic [ref=f1e361]:
+            - text: "NG8001:"
+            - generic [ref=f1e362]: "'mat-form-field' is not a known element: 1. If 'mat-form-field' is an Angular component, then verify that it is part of this module. 2. If 'mat-form-field' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 33 <mat-form-field class=\"prompt-select\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e363]:
+        - text: ERROR
+        - generic [ref=f1e364]:
+          - text: src/app/components/search-files.component.ts:34:9 - error
+          - generic [ref=f1e365]:
+            - text: "NG8001:"
+            - generic [ref=f1e366]: "'mat-label' is not a known element: 1. If 'mat-label' is an Angular component, then verify that it is part of this module. 2. If 'mat-label' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 34 <mat-label>Modèle de Prompt</mat-label> ~~~~~~~~~~~"
+      - generic [ref=f1e367]:
+        - text: ERROR
+        - generic [ref=f1e368]:
+          - text: src/app/components/search-files.component.ts:35:9 - error
+          - generic [ref=f1e369]:
+            - text: "NG8001:"
+            - generic [ref=f1e370]: "'mat-select' is not a known element: 1. If 'mat-select' is an Angular component, then verify that it is part of this module. 2. If 'mat-select' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 35 <mat-select [(ngModel)]=\"selectedPrompt\" (selectionChange)=\"onPromptSelectionChange()\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e371]:
+        - text: ERROR
+        - generic [ref=f1e372]:
+          - text: src/app/components/search-files.component.ts:35:21 - error
+          - generic [ref=f1e373]:
+            - text: "NG8002:"
+            - generic [ref=f1e374]: Can't bind to 'ngModel' since it isn't a known property of 'mat-select'. 1. If 'mat-select' is an Angular component and it has 'ngModel' input, then verify that it is part of this module. 2. If 'mat-select' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 35 <mat-select [(ngModel)]="selectedPrompt" (selectionChange)="onPromptSelectionChange()"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e375]:
+        - text: ERROR
+        - generic [ref=f1e376]:
+          - text: src/app/components/search-files.component.ts:35:34 - error
+          - generic [ref=f1e377]:
+            - text: "TS2322:"
+            - generic [ref=f1e378]: Type 'Event' is not assignable to type 'string'. 35 <mat-select [(ngModel)]="selectedPrompt" (selectionChange)="onPromptSelectionChange()"> ~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e379]:
+        - text: ERROR
+        - generic [ref=f1e380]:
+          - text: src/app/components/search-files.component.ts:36:11 - error
+          - generic [ref=f1e381]:
+            - text: "NG8001:"
+            - generic [ref=f1e382]: "'mat-option' is not a known element: 1. If 'mat-option' is an Angular component, then verify that it is part of this module. 2. If 'mat-option' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 36 <mat-option *ngFor=\"let prompt of promptTemplates\" [value]=\"prompt.id\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e383]:
+        - text: ERROR
+        - generic [ref=f1e384]:
+          - text: src/app/components/search-files.component.ts:36:62 - error
+          - generic [ref=f1e385]:
+            - text: "NG8002:"
+            - generic [ref=f1e386]: Can't bind to 'value' since it isn't a known property of 'mat-option'. 1. If 'mat-option' is an Angular component and it has 'value' input, then verify that it is part of this module. 2. If 'mat-option' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component. 36 <mat-option *ngFor="let prompt of promptTemplates" [value]="prompt.id"> ~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e387]:
+        - text: ERROR
+        - generic [ref=f1e388]:
+          - text: src/app/components/search-files.component.ts:41:7 - error
+          - generic [ref=f1e389]:
+            - text: "NG8001:"
+            - generic [ref=f1e390]: "'mat-form-field' is not a known element: 1. If 'mat-form-field' is an Angular component, then verify that it is part of this module. 2. If 'mat-form-field' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 41 <mat-form-field class=\"prompt-textarea\"> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      - generic [ref=f1e391]:
+        - text: ERROR
+        - generic [ref=f1e392]:
+          - text: src/app/components/search-files.component.ts:42:9 - error
+          - generic [ref=f1e393]:
+            - text: "NG8001:"
+            - generic [ref=f1e394]: "'mat-label' is not a known element: 1. If 'mat-label' is an Angular component, then verify that it is part of this module. 2. If 'mat-label' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 42 <mat-label>Contenu du Prompt</mat-label> ~~~~~~~~~~~"
+      - generic [ref=f1e395]:
+        - text: ERROR
+        - generic [ref=f1e396]:
+          - text: src/app/components/search-files.component.ts:45:19 - error
+          - generic [ref=f1e397]:
+            - text: "NG8002:"
+            - generic [ref=f1e398]: Can't bind to 'ngModel' since it isn't a known property of 'textarea'. 45 [(ngModel)]="currentPromptContent" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      - generic [ref=f1e399]:
+        - text: ERROR
+        - generic [ref=f1e400]:
+          - text: src/app/components/search-files.component.ts:45:32 - error
+          - generic [ref=f1e401]:
+            - text: "TS2322:"
+            - generic [ref=f1e402]: Type 'Event' is not assignable to type 'string'. 45 [(ngModel)]="currentPromptContent" ~~~~~~~~~~~~~~~~~~~~~
+            - generic [ref=f1e403]: 46 rows="6"></textarea> ~~~~~~
+      - generic [ref=f1e404]:
+        - text: ERROR
+        - generic [ref=f1e405]:
+          - text: src/app/components/search-files.component.ts:54:9 - error
+          - generic [ref=f1e406]:
+            - text: "NG8001:"
+            - generic [ref=f1e407]: "'mat-spinner' is not a known element: 1. If 'mat-spinner' is an Angular component, then verify that it is part of this module. 2. If 'mat-spinner' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message. 54 <mat-spinner></mat-spinner> ~~~~~~~~~~~~~"
+```

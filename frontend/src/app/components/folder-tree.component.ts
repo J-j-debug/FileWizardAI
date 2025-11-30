@@ -1,5 +1,9 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { MatTreeFlatDataSource, MatTreeFlattener } from '@angular/material/tree';
+import { CommonModule } from '@angular/common';
+import { MatTreeModule, MatTreeFlatDataSource, MatTreeFlattener } from '@angular/material/tree';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Observable, of as observableOf } from 'rxjs';
 import { FlatTreeControl } from '@angular/cdk/tree';
 import { DataService } from '../data.service';
@@ -25,6 +29,14 @@ export interface TreeNode {
 
 @Component({
   selector: 'app-folder-tree',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatTreeModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule
+  ],
   template: `
     <div class="tree-container">
       <div class="tree-header">

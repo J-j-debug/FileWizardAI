@@ -1,8 +1,29 @@
 import { Component, HostBinding, Input, QueryList, ViewChildren } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DataService } from './data.service';
 import { HttpParams } from "@angular/common/http";
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+
+// Standalone Components
 import { FolderTreeComponent } from './components/folder-tree.component';
-import { NgModel } from '@angular/forms';
+import { SearchFilesComponent } from './components/search-files.component';
+import { LlmSettingsComponent } from './components/llm-settings.component';
+import { ResearchHubComponent } from './components/research-hub.component';
+import { PromptManagerComponent } from './components/prompt-manager.component';
+import { DeepResearchComponent } from './components/deep-research.component';
+
+// Angular Material Modules
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSliderModule } from '@angular/material/slider';
+import { CustomPrompt } from './models';
+
 
 interface ExtensionGroup {
   name: string;
@@ -15,6 +36,26 @@ interface ExtensionGroup {
 
 @Component({
   selector: 'app-root',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    FolderTreeComponent,
+    SearchFilesComponent,
+    LlmSettingsComponent,
+    ResearchHubComponent,
+    PromptManagerComponent,
+    DeepResearchComponent,
+    MatIconModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCheckboxModule,
+    MatSelectModule,
+    MatTooltipModule,
+    MatDialogModule,
+    MatSliderModule
+  ],
   template: `
     <div class="app-container">
       <button class="theme-toggle" (click)="toggleTheme()">
@@ -25,6 +66,17 @@ interface ExtensionGroup {
       <div class="header">
         <div class="header-content">
           <h1>Welcome to FileWizard AI</h1>
+          <div class="navigation-buttons">
+            <button class="nav-button" [class.active]="activeView === 'basic'" (click)="activeView = 'basic'">
+              Recherche de base
+            </button>
+            <button class="nav-button" [class.active]="activeView === 'research'" (click)="activeView = 'research'">
+              Hub de Recherche
+            </button>
+            <button class="nav-button" [class.active]="activeView === 'deep_research'" (click)="activeView = 'deep_research'">
+              Deep Research
+            </button>
+          </div>
           <p class="subtitle">Intelligent file management at your fingertips</p>
           <div class="header-actions">
             <button mat-flat-button color="primary" (click)="showLLMSettings = !showLLMSettings">
@@ -54,143 +106,187 @@ interface ExtensionGroup {
         </div>
       </div>
 
-      <div class="content">
-        <div class="main-section">
-          <div class="section-header">
-            <div class="icon-title">
-              <mat-icon>folder_open</mat-icon>
-              <div>
-                <h2>File Structure Manager</h2>
-                <p>Configure and organize your files intelligently</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="input-section">
-            <mat-form-field appearance="outline" class="root-path-field">
-              <mat-label>Root Path</mat-label>
-              <input matInput [(ngModel)]="rootPath" (ngModelChange)="onPathChange($event)" placeholder="Click the folder icon to select a directory">
-              <mat-icon matSuffix>folder_open</mat-icon>
-            </mat-form-field>
-          </div>
-
-          <div class="extensions-section">
-            <div class="extensions-header">
-              <h3>File Extensions</h3>
-              <div class="extension-actions">
-                <button mat-button color="primary" (click)="selectAll()">
-                  <mat-icon>select_all</mat-icon>
-                  Select All
-                </button>
-                <button mat-button color="warn" (click)="clearAll()">
-                  <mat-icon>clear_all</mat-icon>
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            <div class="extension-groups">
-              <div *ngFor="let group of extensionGroups" class="extension-group">
-                <div class="group-header" (click)="toggleGroup(group)">
-                  <div class="group-info">
-                    <mat-icon>{{group.icon}}</mat-icon>
-                    <span>{{group.name}}</span>
-                  </div>
-                  <div class="group-count">
-                    {{group.selected}}/{{group.total}}
-                    <mat-icon class="expand-icon" [class.expanded]="group.expanded">expand_more</mat-icon>
-                  </div>
-                </div>
-                <div class="group-content" [class.expanded]="group.expanded">
-                  <mat-checkbox *ngFor="let ext of group.extensions"
-                              [checked]="isExtensionSelected(ext)"
-                              (change)="toggleExtension(ext, group)"
-                              color="primary">
-                    {{ext}}
-                  </mat-checkbox>
+      <div *ngIf="activeView === 'basic'">
+        <div class="content">
+          <div class="main-section">
+            <div class="section-header">
+              <div class="icon-title">
+                <mat-icon>folder_open</mat-icon>
+                <div>
+                  <h2>File Structure Manager</h2>
+                  <p>Configure and organize your files intelligently</p>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="actions-section">
-            <mat-checkbox [(ngModel)]="isRecursive" color="primary" class="subdirectories-check">
-              Include Subdirectories
-            </mat-checkbox>
-            
-            <button mat-flat-button color="primary" (click)="getFiles()" class="get-files-btn">
-              <mat-icon>search</mat-icon>
-              GET FILES
-            </button>
-            <div class="index-action-group">
-              <mat-checkbox [(ngModel)]="useAdvancedIndexing" color="accent" class="subdirectories-check">
-                Advanced Indexing (Unstructured)
-              </mat-checkbox>
-              <button mat-flat-button color="accent" (click)="indexFiles()" class="get-files-btn">
-                <mat-icon>api</mat-icon>
-                INDEX FILES
+            <div class="input-section">
+              <mat-form-field appearance="outline" class="root-path-field">
+                <mat-label>Root Path</mat-label>
+                <input matInput [(ngModel)]="rootPath" (ngModelChange)="onPathChange($event)" placeholder="Click the folder icon to select a directory">
+                <mat-icon matSuffix>folder_open</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <div class="extensions-section">
+              <div class="extensions-header">
+                <h3>File Extensions</h3>
+                <div class="extension-actions">
+                  <button mat-button color="primary" (click)="selectAll()">
+                    <mat-icon>select_all</mat-icon>
+                    Select All
+                  </button>
+                  <button mat-button color="warn" (click)="clearAll()">
+                    <mat-icon>clear_all</mat-icon>
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div class="extension-groups">
+                <div *ngFor="let group of extensionGroups" class="extension-group">
+                  <div class="group-header" (click)="toggleGroup(group)">
+                    <div class="group-info">
+                      <mat-icon>{{group.icon}}</mat-icon>
+                      <span>{{group.name}}</span>
+                    </div>
+                    <div class="group-count">
+                      {{group.selected}}/{{group.total}}
+                      <mat-icon class="expand-icon" [class.expanded]="group.expanded">expand_more</mat-icon>
+                    </div>
+                  </div>
+                  <div class="group-content" [class.expanded]="group.expanded">
+                    <mat-checkbox *ngFor="let ext of group.extensions"
+                                [checked]="isExtensionSelected(ext)"
+                                (change)="toggleExtension(ext, group)"
+                                color="primary">
+                      {{ext}}
+                    </mat-checkbox>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-strategy-section">
+                <h4>Stratégie de Résumé</h4>
+                <div class="strategy-controls">
+                    <mat-form-field appearance="outline">
+                        <mat-label>Stratégie</mat-label>
+                        <mat-select [(ngModel)]="summaryStrategy">
+                            <mat-option value="fast">Rapide (Début du document)</mat-option>
+                            <mat-option value="balanced" [disabled]="true">Équilibré (Début + Fin)</mat-option>
+                            <mat-option value="full" [disabled]="true">Complet (Document entier)</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <div class="token-slider">
+                        <label>Tokens: {{ tokenCount }}</label>
+                        <mat-slider min="1024" max="16384" step="1024" discrete="true">
+                            <input matSliderThumb [(ngModel)]="tokenCount">
+                        </mat-slider>
+                    </div>
+                </div>
+                <p class="help-text">Unité en tokens (environ 75 mots pour 100 tokens).</p>
+                 <p *ngIf="summaryStrategy === 'full'" class="warning-text">
+                    Attention : ce mode analyse le document en entier, ce qui peut être long et consommer plus de crédits API.
+                </p>
+            </div>
+
+            <div class="prompt-section">
+              <mat-form-field appearance="outline">
+                <mat-label>Prompt</mat-label>
+                <mat-select [(ngModel)]="selectedPrompt">
+                  <mat-option *ngFor="let prompt of prompts" [value]="prompt.content">{{ prompt.title }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <button mat-icon-button (click)="openPromptManager()" matTooltip="Manage custom prompts" [disabled]="!defaultPrompt.content">
+                <mat-icon>settings</mat-icon>
               </button>
             </div>
-          </div>
-        </div>
 
-        <div class="search-section">
-          <div class="section-header">
-            <div class="icon-title">
-              <mat-icon>search</mat-icon>
-              <div>
-                <h2>File Search</h2>
-                <p>Search and locate files in your directory</p>
+            <div class="actions-section">
+              <mat-checkbox [(ngModel)]="isRecursive" color="primary" class="subdirectories-check">
+                Include Subdirectories
+              </mat-checkbox>
+
+              <button mat-flat-button color="primary" (click)="getFiles()" class="get-files-btn">
+                <mat-icon>search</mat-icon>
+                GET FILES
+              </button>
+              <div class="index-action-group">
+                <mat-checkbox [(ngModel)]="useAdvancedIndexing" color="accent" class="subdirectories-check">
+                  Advanced Indexing (Unstructured)
+                </mat-checkbox>
+                <button mat-flat-button color="accent" (click)="indexFiles()" class="get-files-btn">
+                  <mat-icon>api</mat-icon>
+                  INDEX FILES
+                </button>
               </div>
             </div>
           </div>
 
-          <app-search-files [rootPath]="rootPath" 
-                           [isRecursive]="isRecursive" 
-                           [filesExts]="filesExts">
-          </app-search-files>
-
-          <div class="trees-container" *ngIf="srcPaths">
-            <div class="structure-panel">
-              <app-folder-tree [paths]="srcPaths" 
-                             [rootPath]="rootPath"
-                             [headline]="'Current Structure'"
-                             [index]=0 
-                             (notify)="onNotify($event)">
-              </app-folder-tree>
-            </div>
-
-            <div class="structure-panel">
-              <app-folder-tree [paths]="dstPaths" 
-                             [rootPath]="rootPath"
-                             [headline]="'Optimized Structure'"
-                             [index]=1 
-                             (notify)="onNotify($event)">
-              </app-folder-tree>
-            </div>
-          </div>
-
-          <div class="update-section" *ngIf="original_files">
-            <button mat-flat-button color="primary" (click)="updateStructure()">
-              <mat-icon>auto_fix_high</mat-icon>
-              Update Structure
-            </button>
-
-            <div class="messages">
-              <div *ngIf="successMessage" class="success-message">
-                <mat-icon>check_circle</mat-icon>
-                {{successMessage}}
+          <div class="search-section">
+            <div class="section-header">
+              <div class="icon-title">
+                <mat-icon>search</mat-icon>
+                <div>
+                  <h2>File Search</h2>
+                  <p>Search and locate files in your directory</p>
+                </div>
               </div>
-              <div *ngIf="errorMessage" class="error-message">
-                <mat-icon>error</mat-icon>
-                {{errorMessage}}
+            </div>
+
+            <app-search-files [rootPath]="rootPath"
+                             [isRecursive]="isRecursive"
+                             [filesExts]="filesExts">
+            </app-search-files>
+
+            <div class="trees-container" *ngIf="srcPaths">
+              <div class="structure-panel">
+                <app-folder-tree [paths]="srcPaths"
+                               [rootPath]="rootPath"
+                               [headline]="'Current Structure'"
+                               [index]=0
+                               (notify)="onNotify($event)">
+                </app-folder-tree>
+              </div>
+
+              <div class="structure-panel">
+                <app-folder-tree [paths]="dstPaths"
+                               [rootPath]="rootPath"
+                               [headline]="'Optimized Structure'"
+                               [index]=1
+                               (notify)="onNotify($event)">
+                </app-folder-tree>
+              </div>
+            </div>
+
+            <div class="update-section" *ngIf="original_files">
+              <button mat-flat-button color="primary" (click)="updateStructure()">
+                <mat-icon>auto_fix_high</mat-icon>
+                Update Structure
+              </button>
+
+              <div class="messages">
+                <div *ngIf="successMessage" class="success-message">
+                  <mat-icon>check_circle</mat-icon>
+                  {{successMessage}}
+                </div>
+                <div *ngIf="errorMessage" class="error-message">
+                  <mat-icon>error</mat-icon>
+                  {{errorMessage}}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Removed Results Section -->
+      <div *ngIf="activeView === 'research'">
+          <app-research-hub></app-research-hub>
+      </div>
+
+      <div *ngIf="activeView === 'deep_research'">
+        <app-deep-research></app-deep-research>
+      </div>
     </div>
   `,
   styles: [`
@@ -226,7 +322,7 @@ interface ExtensionGroup {
       padding: 4rem 2rem;
       position: relative;
       overflow: hidden;
-      background: linear-gradient(180deg, 
+      background: linear-gradient(180deg,
         rgba(0, 191, 165, 0.03) 0%,
         rgba(100, 255, 218, 0.02) 100%
       );
@@ -247,7 +343,7 @@ interface ExtensionGroup {
       left: -50%;
       right: -50%;
       bottom: -50%;
-      background: 
+      background:
         radial-gradient(circle at 20% 30%, rgba(0, 191, 165, 0.03) 0%, transparent 70%),
         radial-gradient(circle at 80% 70%, rgba(100, 255, 218, 0.03) 0%, transparent 70%);
       transform-origin: center;
@@ -260,7 +356,7 @@ interface ExtensionGroup {
       font-size: 4rem;
       font-weight: 700;
       margin: 0;
-      background: linear-gradient(135deg, 
+      background: linear-gradient(135deg,
         rgba(0, 191, 165, 1) 0%,
         rgba(100, 255, 218, 1) 50%,
         rgba(0, 191, 165, 1) 100%
@@ -336,7 +432,7 @@ interface ExtensionGroup {
         border-color: rgba(0, 191, 165, 0.5);
         transform: translateY(-2px);
         padding-right: 2.25rem;
-        box-shadow: 
+        box-shadow:
           0 4px 20px rgba(0, 191, 165, 0.2),
           0 0 0 2px rgba(0, 191, 165, 0.1);
 
@@ -876,6 +972,70 @@ interface ExtensionGroup {
       --border: #666666;
     }
 
+    .navigation-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .nav-button {
+      padding: 0.5rem 1.5rem;
+      border-radius: 50px;
+      background-color: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1rem;
+    }
+
+    .nav-button.active {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .prompt-section {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .prompt-section mat-form-field {
+      flex-grow: 1;
+    }
+
+    .summary-strategy-section {
+      margin-bottom: 2rem;
+    }
+
+    .summary-strategy-section h4 {
+      margin-bottom: 1rem;
+    }
+
+    .strategy-controls {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .token-slider {
+      flex-grow: 1;
+    }
+
+    .help-text {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .warning-text {
+        font-size: 0.8rem;
+        color: orange;
+    }
+
     @media (max-width: 1024px) {
       .content {
         grid-template-columns: 1fr;
@@ -916,7 +1076,7 @@ interface ExtensionGroup {
   `]
 })
 export class AppComponent {
-
+  activeView: string = 'basic';
   @ViewChildren(FolderTreeComponent) childComponents!: QueryList<FolderTreeComponent>;
 
   extensionGroups: ExtensionGroup[] = [
@@ -991,7 +1151,16 @@ export class AppComponent {
   showLLMSettings = false;
   useAdvancedIndexing: boolean = false;
 
-  constructor(private dataService: DataService) {
+  // Prompt Management
+  defaultPrompt: CustomPrompt = { title: 'Default Prompt', content: '' };
+  prompts: CustomPrompt[] = [];
+  selectedPrompt: string = '';
+
+  // Summary Strategy
+  summaryStrategy: string = 'fast';
+  tokenCount: number = 6144;
+
+  constructor(private dataService: DataService, public dialog: MatDialog) {
     // Check for saved theme preference
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -999,6 +1168,43 @@ export class AppComponent {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
     this.updateSelectedCounts();
+    this.loadInitialPrompts();
+  }
+
+  loadInitialPrompts() {
+    this.dataService.getDefaultPrompt().subscribe(response => {
+      this.defaultPrompt.content = response.prompt;
+      this.selectedPrompt = this.defaultPrompt.content;
+      this.loadPrompts(); // Load custom prompts after default is set
+    });
+  }
+
+  loadPrompts() {
+    const savedPrompts = localStorage.getItem('customFileStructurePrompts');
+    let customPrompts: CustomPrompt[] = [];
+    if (savedPrompts) {
+      customPrompts = JSON.parse(savedPrompts);
+    }
+    this.prompts = [this.defaultPrompt, ...customPrompts];
+  }
+
+  openPromptManager() {
+    const dialogRef = this.dialog.open(PromptManagerComponent, {
+      width: '800px',
+      height: '600px',
+      data: {
+        prompts: this.prompts,
+        defaultPrompt: this.defaultPrompt
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // Save the returned custom prompts
+        localStorage.setItem('customFileStructurePrompts', JSON.stringify(result));
+        this.loadPrompts(); // Reload prompts to update the dropdown
+      }
+    });
   }
 
   toggleGroup(group: ExtensionGroup) {
@@ -1047,6 +1253,14 @@ export class AppComponent {
     params = params.set("root_path", this.rootPath)
     params = params.set("recursive", this.isRecursive)
     params = params.set("required_exts", this.filesExts.join(';'))
+    params = params.set("token_count", this.tokenCount.toString());
+    params = params.set("summary_strategy", this.summaryStrategy);
+
+    // Only add the prompt if it's not the default one
+    if (this.selectedPrompt !== this.defaultPrompt.content) {
+      params = params.set("prompt", this.selectedPrompt);
+    }
+
     this.dataService.getFormattedFiles(params).subscribe((data) => {
       this.original_files = data
       this.original_files.items = this.original_files.items.map((item: any) => ({ src_path: item.src_path.replaceAll("\\\\", "/").replaceAll("\\", "/"), dst_path: item.dst_path }))

@@ -134,6 +134,30 @@ class Model:
                 self.cnt_txt += 1
         return summary
 
+    async def generate_text_api(self, prompt: str):
+        """A generic method to get a text completion from a prompt."""
+        attempt = 0
+        response_text = ""
+        while attempt < 5:
+            try:
+                chat_completion = await self.async_text_clients[
+                    self.cnt_txt % self.text_keys_count].chat.completions.create(
+                    model=self.TEXT_MODEL_NAME,
+                    messages=[
+                        {"role": "user", "content": prompt},
+                    ],
+                    stream=False,
+                    temperature=0,
+                    timeout=None,
+                )
+                response_text = chat_completion.choices[0].message.content
+                break
+            except Exception as e:
+                logger.error(f"Error generating text: {e}")
+                attempt += 1
+                self.cnt_txt += 1
+        return response_text
+
     async def generate_rag_response_api(self, context: str, query: str, custom_prompt_template: str = None):
         if custom_prompt_template:
             # Use the custom template provided by the user
@@ -179,22 +203,55 @@ class Model:
                 self.cnt_txt += 1
         return summary
 
-    async def create_file_tree_api(self, summaries: list):
+    async def execute_deep_analysis_prompt(self, prompt: str):
+        attempt = 0
+        while attempt < 5:
+            try:
+                chat_completion = await self.async_text_clients[
+                    self.cnt_txt % self.text_keys_count].chat.completions.create(
+                    model=self.TEXT_MODEL_NAME,
+                    messages=[
+                        {"role": "system", "content": "You are an expert document analyst that always responds in JSON."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    stream=False,
+                    temperature=0,
+                    timeout=None,
+                )
+                response_content = chat_completion.choices[0].message.content
+                return json.loads(response_content)
+            except Exception as e:
+                logger.error(f"Error executing deep analysis prompt: {e}")
+                attempt += 1
+                self.cnt_txt += 1
+                time.sleep(2)
+        raise Exception("Failed to get a valid JSON response from the LLM after multiple attempts.")
+
+    async def create_file_tree_api(self, summaries: list, prompt: str = None):
+        # Filter out any entries with invalid or empty summaries before processing.
+        valid_summaries = [s for s in summaries if s and s.get("summary") and s.get("summary").strip()]
+
         tmp: list = []
         file_tree: list = []
-        for summary in summaries:
+        for summary in valid_summaries:
             # it's better to use tiktoken here
             if (sys.getsizeof(json.dumps(tmp)) + sys.getsizeof(json.dumps(summary))) / 4 >= self.MAX_TOKEN_SIZE:
-                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp)
+                if prompt:
+                    file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
+                else:
+                    file_tree = file_tree + await self.create_file_tree_api_chunk(tmp)
                 tmp = []
             else:
                 tmp.append(summary)
         if len(tmp) > 0:
-            file_tree = file_tree + await self.create_file_tree_api_chunk(tmp)
+            if prompt:
+                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp, prompt=prompt)
+            else:
+                file_tree = file_tree + await self.create_file_tree_api_chunk(tmp)
         return file_tree
 
-    async def create_file_tree_api_chunk(self, summaries: list):
-        file_prompt = """
+    async def create_file_tree_api_chunk(self, summaries: list, prompt: str = """
         You will be provided with list of source files and a summary of their contents.
         For each file,propose a new path and filename, using a directory structure that optimally organizes the files using known conventions and best practices.
         Follow good naming conventions. Here are a few guidelines
@@ -217,7 +274,9 @@ class Model:
             ]
         }
         ```
-        """.strip()
+        """.strip()):
+
+        file_prompt = prompt
         attempt = 0
         file_tree = []  # Initialize as empty list
         while attempt < 10:
