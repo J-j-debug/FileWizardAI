@@ -11,6 +11,7 @@ import { SearchFilesComponent } from './components/search-files.component';
 import { LlmSettingsComponent } from './components/llm-settings.component';
 import { ResearchHubComponent } from './components/research-hub.component';
 import { PromptManagerComponent } from './components/prompt-manager.component';
+import { DeepResearchComponent } from './components/deep-research.component';
 
 // Angular Material Modules
 import { MatIconModule } from '@angular/material/icon';
@@ -44,6 +45,7 @@ interface ExtensionGroup {
     LlmSettingsComponent,
     ResearchHubComponent,
     PromptManagerComponent,
+    DeepResearchComponent,
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -70,6 +72,9 @@ interface ExtensionGroup {
             </button>
             <button class="nav-button" [class.active]="activeView === 'research'" (click)="activeView = 'research'">
               Hub de Recherche
+            </button>
+            <button class="nav-button" [class.active]="activeView === 'deep_research'" (click)="activeView = 'deep_research'">
+              Deep Research
             </button>
           </div>
           <p class="subtitle">Intelligent file management at your fingertips</p>
@@ -277,6 +282,10 @@ interface ExtensionGroup {
 
       <div *ngIf="activeView === 'research'">
           <app-research-hub></app-research-hub>
+      </div>
+
+      <div *ngIf="activeView === 'deep_research'">
+        <app-deep-research></app-deep-research>
       </div>
     </div>
   `,
@@ -1185,7 +1194,7 @@ export class AppComponent {
       height: '600px',
       data: {
         prompts: this.prompts,
-        defaultPromptContent: this.defaultPrompt.content
+        defaultPrompt: this.defaultPrompt
       }
     });
 

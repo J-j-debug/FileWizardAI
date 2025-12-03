@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - button "Dark Mode" [ref=e4] [cursor=pointer]:
+    - img [ref=e5]: dark_mode
+    - text: Dark Mode
+  - generic [ref=e7]:
+    - heading "Welcome to FileWizard AI" [level=1] [ref=e8]
+    - generic [ref=e9]:
+      - button "Recherche de base" [ref=e10] [cursor=pointer]
+      - button "Hub de Recherche" [ref=e11] [cursor=pointer]
+      - button "Deep Research" [ref=e12] [cursor=pointer]
+    - paragraph [ref=e13]: Intelligent file management at your fingertips
+    - generic [ref=e14]:
+      - button "Configuration LLM" [ref=e15]:
+        - img [ref=e16]: settings
+        - generic [ref=e17]: Configuration LLM
+      - link "View on GitHub" [ref=e20] [cursor=pointer]:
+        - /url: https://github.com/AIxHunter/FileWizardAI/tree/main
+        - generic [ref=e21]:
+          - img [ref=e22]
+          - generic [ref=e24]: View on GitHub
+          - img [ref=e25]: arrow_forward
+  - generic [ref=e30]:
+    - generic [ref=e32]:
+      - generic [ref=e35]: My Notebooks
+      - paragraph [ref=e37]: No notebooks found. Create one to get started!
+    - generic [ref=e39]:
+      - generic [ref=e42]: Create New Notebook
+      - generic [ref=e44]:
+        - generic [ref=e48]:
+          - text: Notebook Name
+          - generic [ref=e49]: "*"
+          - textbox "Notebook Name" [ref=e50]: Test Notebook 1764789887041
+        - generic [ref=e56]:
+          - text: Description
+          - textbox "Description" [ref=e57]: A notebook for E2E testing.
+        - button "Create" [active] [ref=e60] [cursor=pointer]:
+          - generic [ref=e61]: Create
+```

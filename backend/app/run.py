@@ -6,6 +6,7 @@ import os
 import logging
 from pathlib import Path
 import hashlib
+import json
 
 from .database import SQLiteDB
 from .settings import CustomFormatter
@@ -23,18 +24,55 @@ db = SQLiteDB()
 
 
 async def summarize_document(doc: Document):
-    logger.info(f"Processing file {doc.metadata['file_path']}")
-    doc_hash = get_file_hash(doc.metadata['file_path'])
-    if db.is_file_exist(doc.metadata['file_path'], doc_hash):
-        summary = db.get_file_summary(doc.metadata['file_path'])
-    else:
+    """
+    Summarizes a document, ensuring robustness against empty files and invalid cache entries.
+    """
+    file_path = doc.metadata.get('file_path')
+    logger.info(f"Processing file: {file_path}")
+
+    # 1. Validate input document
+    if not file_path:
+        logger.error("Document is missing file_path in metadata.")
+        return None # Or handle as an error
+
+    doc_hash = get_file_hash(file_path)
+    summary = None
+
+    # 2. Check for existing, valid summary in the database
+    if db.is_file_exist(file_path, doc_hash):
+        summary = db.get_file_summary(file_path)
+        if summary and summary.strip():
+            logger.info(f"Found valid cached summary for {file_path}.")
+            return {"file_path": file_path, "summary": summary}
+        else:
+            logger.warning(f"Cached summary for {file_path} is invalid. Regenerating.")
+
+    # 3. Handle unreadable or empty documents
+    if not doc.text or not doc.text.strip():
+        summary = "File is empty or could not be read."
+        logger.warning(f"File {file_path} is empty. Using placeholder summary.")
+        db.insert_file_summary(file_path, doc_hash, summary)
+        return {"file_path": file_path, "summary": summary}
+
+    # 4. Generate new summary if no valid one was found
+    try:
         model = Model()
         summary = await model.summarize_document_api(doc.text)
-        db.insert_file_summary(doc.metadata['file_path'], doc_hash, summary)
-    return {
-        "file_path": doc.metadata['file_path'],
-        "summary": summary
-    }
+        if summary:
+            db.insert_file_summary(file_path, doc_hash, summary)
+            logger.info(f"Successfully generated and cached new summary for {file_path}.")
+        else:
+            summary = "Failed to generate summary."
+            logger.error(f"LLM failed to generate summary for {file_path}.")
+            db.insert_file_summary(file_path, doc_hash, summary)
+
+    except Exception as e:
+        summary = f"An error occurred during summarization: {e}"
+        logger.error(f"Exception during summarization for {file_path}: {e}")
+        db.insert_file_summary(file_path, doc_hash, summary)
+
+
+    return {"file_path": file_path, "summary": summary}
 
 
 async def summarize_image_document(doc: ImageDocument):
@@ -75,10 +113,13 @@ async def remove_deleted_files():
 
 
 def load_documents(path: str, recursive: bool, required_exts: list, token_count: int = 6144):
+    # If no specific extensions are required, set to None to load all files.
+    # An empty list would load no files.
+    extensions_to_load = required_exts if required_exts else None
     reader = SimpleDirectoryReader(
         input_dir=path,
         recursive=recursive,
-        required_exts=required_exts,
+        required_exts=extensions_to_load,
         errors='ignore'
     )
     splitter = TokenTextSplitter(chunk_size=token_count)
@@ -147,3 +188,88 @@ def get_file_hash(file_path):
         while chunk := f.read(8192):
             hash_func.update(chunk)
     return hash_func.hexdigest()
+
+async def run_deep_analysis(root_path: str, recursive: bool, required_exts: list, schema_id: int, schema_data: dict, is_incremental: bool = False):
+    """
+    Runs a deep analysis on a set of files based on a given schema.
+    """
+    logger.info(f"Starting deep analysis with schema ID: {schema_id}. Incremental mode: {is_incremental}")
+
+    documents_to_analyze = load_documents(root_path, recursive, required_exts)
+
+    if is_incremental:
+        already_analyzed = db.get_analyzed_file_paths(schema_id)
+        documents_to_analyze = [
+            doc for doc in documents_to_analyze
+            if doc.metadata.get('file_path') not in already_analyzed
+        ]
+        logger.info(f"Found {len(documents_to_analyze)} new file(s) to analyze in incremental mode.")
+
+    all_results = []
+    model = Model()
+
+    for doc in documents_to_analyze:
+        file_path = doc.metadata.get('file_path', 'unknown_file')
+        try:
+            content = doc.text
+
+            # Prepare prompts for the LLM
+            tasks = []
+            # 1. Summary
+            summary_full_prompt = f"{schema_data['summary_prompt']}\n\n{content}"
+            tasks.append(model.generate_text_api(summary_full_prompt))
+
+            # 2. Complementary Questions with JSON output
+            for q_data in schema_data['complementary_questions']:
+                json_format = '{"réponse": "Votre réponse ici"}'
+                if q_data['isYesNo']:
+                    json_format = '{"réponse": "Oui"}'
+
+                question_prompt = f"Répondez à la question suivante en vous basant sur le document fourni et retournez la réponse au format JSON {json_format}. Document: \"{content}\"\n\nQuestion: \"{q_data['question']}\""
+                tasks.append(model.execute_deep_analysis_prompt(question_prompt))
+
+            # 3. Tagging with JSON output
+            tags_list = [tag.strip() for tag in schema_data['tags'].split(',')]
+            json_format_tags = json.dumps({tag: "Oui" for tag in tags_list})
+            tags_prompt = f"Pour le document suivant, déterminez si les sujets suivants sont abordés : {schema_data['tags']}. Répondez pour chaque sujet avec 'Oui' ou 'Non' dans un format JSON comme celui-ci : {json_format_tags}. Document: \"{content}\""
+            tasks.append(model.execute_deep_analysis_prompt(tags_prompt))
+
+            # Execute all LLM calls in parallel
+            llm_responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Process responses
+            summary_response = llm_responses[0] if not isinstance(llm_responses[0], Exception) else "Erreur de résumé"
+            questions_responses = llm_responses[1:-1]
+            tags_response_json = llm_responses[-1] if not isinstance(llm_responses[-1], Exception) else {}
+
+            file_results = {
+                "summary": summary_response,
+                "questions": {},
+                "tags": tags_response_json
+            }
+
+            for i, q_data in enumerate(schema_data['complementary_questions']):
+                q_response = questions_responses[i]
+                if not isinstance(q_response, Exception) and q_response and 'réponse' in q_response:
+                    file_results["questions"][q_data['question']] = q_response['réponse']
+                else:
+                    file_results["questions"][q_data['question']] = "Erreur d'analyse"
+
+            # Ensure the file exists in the summary table to satisfy the foreign key constraint.
+            # Only insert a placeholder if the file isn't already in the summary table.
+            if not db.get_file_summary(file_path):
+                dummy_hash = get_file_hash(file_path)
+                db.insert_file_summary(file_path, dummy_hash, "") # Insert placeholder
+
+            db.save_analysis_result(
+                schema_id=schema_id,
+                file_path=file_path,
+                results=json.dumps(file_results)
+            )
+            all_results.append({"file_path": file_path, "analysis": file_results})
+            logger.info(f"Successfully analyzed and saved results for {file_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to analyze file {file_path}: {e}")
+
+    return all_results
