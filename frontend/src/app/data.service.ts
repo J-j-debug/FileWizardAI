@@ -108,4 +108,37 @@ export class DataService {
   searchInNotebook(notebookId: number, params: HttpParams): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/notebooks/${notebookId}/search`, { params });
   }
+
+  // --- Thesis Manager API ---
+
+  createThesisProject(project: { name: string, description: string }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/thesis_projects`, project);
+  }
+
+  getThesisProjects(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/thesis_projects`);
+  }
+
+  generateThesisStructure(projectId: number, chapters: any[], use_advanced_indexing: boolean = true): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/thesis_projects/${projectId}/generate_structure`, {
+      chapters,
+      use_advanced_indexing
+    });
+  }
+
+  getThesisStructure(projectId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/thesis_projects/${projectId}/structure`);
+  }
+
+  saveThesisPlan(projectId: number, chapters: any[]): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/thesis_projects/${projectId}/plan`, { chapters });
+  }
+
+  getThesisPlan(projectId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/thesis_projects/${projectId}/plan`);
+  }
+
+  generateDeepSummary(filePath: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/deep_summary`, { file_path: filePath });
+  }
 }

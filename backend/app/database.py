@@ -1,7 +1,44 @@
 import sqlite3
+import logging
+import json
+import hashlib
+import os
+
+logger = logging.getLogger(__name__)
 
 
 class SQLiteDB:
+# ... (keeping class definition start) ...
+
+    # ... (skipping to save_deep_summary)
+
+    def save_deep_summary(self, file_path, summary, intermediate_summaries=None):
+        # We use files_summary table, but update deep_summary column
+        try:
+            # Check if exists
+            self.cursor.execute("SELECT file_path FROM files_summary WHERE file_path = ?", (file_path,))
+            data = self.cursor.fetchone()
+            
+            intermediate_json = json.dumps(intermediate_summaries) if intermediate_summaries else None
+            
+            if data:
+                self.cursor.execute("UPDATE files_summary SET deep_summary = ?, intermediate_summaries = ? WHERE file_path = ?", 
+                                  (summary, intermediate_json, file_path))
+            else:
+                # Need to calculate hash for NOT NULL constraint
+                file_hash = "unknown"
+                try:
+                    if os.path.exists(file_path):
+                        with open(file_path, "rb") as f:
+                            file_hash = hashlib.md5(f.read()).hexdigest()
+                except Exception:
+                    pass
+                
+                self.cursor.execute("INSERT INTO files_summary (file_path, file_hash, deep_summary, intermediate_summaries) VALUES (?, ?, ?, ?)", 
+                                  (file_path, file_hash, summary, intermediate_json))
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving deep summary: {e}")
     def __init__(self):
         self.conn = sqlite3.connect('FileWizardAi.db')
         self.cursor = self.conn.cursor()
@@ -57,6 +94,44 @@ class SQLiteDB:
         )
         """
         self.cursor.execute(create_analysis_results_table_query)
+        self.conn.commit()
+
+        # Create thesis_projects table
+        create_thesis_projects_table_query = """
+        CREATE TABLE IF NOT EXISTS thesis_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+        self.cursor.execute(create_thesis_projects_table_query)
+
+        # Create thesis_structure table
+        create_thesis_structure_table_query = """
+        CREATE TABLE IF NOT EXISTS thesis_structure (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER,
+            structure_data TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES thesis_projects (id) ON DELETE CASCADE
+        )
+        """
+        self.cursor.execute(create_thesis_structure_table_query)
+
+        # Add deep_summary column to files_summary if it doesn't exist
+        try:
+            self.cursor.execute("ALTER TABLE files_summary ADD COLUMN deep_summary TEXT")
+        except sqlite3.OperationalError:
+            # Column likely already exists
+            pass
+
+        try:
+            self.cursor.execute("ALTER TABLE files_summary ADD COLUMN intermediate_summaries TEXT")
+        except sqlite3.OperationalError:
+            # Column likely already exists
+            pass
+        
         self.conn.commit()
 
     # Notebook CRUD methods
@@ -213,3 +288,94 @@ class SQLiteDB:
 
     def close(self):
         self.conn.close()
+
+    # Thesis Methods
+    def create_thesis_project(self, name, description=""):
+        try:
+            self.cursor.execute("INSERT INTO thesis_projects (name, description) VALUES (?, ?)", (name, description))
+            self.conn.commit()
+            return self.cursor.lastrowid
+        except sqlite3.IntegrityError:
+            return None
+
+    def get_thesis_projects(self):
+        self.cursor.execute("SELECT id, name, description, created_at FROM thesis_projects")
+        return self.cursor.fetchall()
+
+    def get_thesis_project(self, project_id):
+        self.cursor.execute("SELECT id, name, description FROM thesis_projects WHERE id = ?", (project_id,))
+        return self.cursor.fetchone()
+
+    def save_thesis_structure(self, project_id, structure_data):
+        self.cursor.execute("INSERT INTO thesis_structure (project_id, structure_data) VALUES (?, ?)", (project_id, structure_data))
+        self.conn.commit()
+        return self.cursor.lastrowid
+    
+    def get_thesis_structure(self, project_id):
+         # Get latest
+        self.cursor.execute("SELECT structure_data FROM thesis_structure WHERE project_id = ? ORDER BY created_at DESC LIMIT 1", (project_id,))
+        result = self.cursor.fetchone()
+        return result[0] if result else None
+
+    def save_deep_summary(self, file_path, summary, intermediate_summaries=None):
+        # We use files_summary table, but update deep_summary column
+        try:
+            # Check if exists
+            self.cursor.execute("SELECT file_path FROM files_summary WHERE file_path = ?", (file_path,))
+            data = self.cursor.fetchone()
+            
+            intermediate_json = json.dumps(intermediate_summaries) if intermediate_summaries else None
+            
+            if data:
+                self.cursor.execute("UPDATE files_summary SET deep_summary = ?, intermediate_summaries = ? WHERE file_path = ?", 
+                                  (summary, intermediate_json, file_path))
+            else:
+                # Need to calculate hash for NOT NULL constraint
+                file_hash = "unknown"
+                try:
+                    if os.path.exists(file_path):
+                        with open(file_path, "rb") as f:
+                            file_hash = hashlib.md5(f.read()).hexdigest()
+                except Exception:
+                    pass
+                    
+                self.cursor.execute("INSERT INTO files_summary (file_path, file_hash, deep_summary, intermediate_summaries) VALUES (?, ?, ?, ?)", 
+                                  (file_path, file_hash, summary, intermediate_json))
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving deep summary: {e}")
+
+    def get_deep_summary(self, file_path):
+        self.cursor.execute("SELECT deep_summary, intermediate_summaries FROM files_summary WHERE file_path = ?", (file_path,))
+        result = self.cursor.fetchone()
+        if result:
+            deep_summary = result[0]
+            # TREAT MISSING DEEP SUMMARY AS CACHE MISS
+            if not deep_summary:
+                return None
+                
+            intermediate = result[1]
+            try:
+                intermediate_list = json.loads(intermediate) if intermediate else []
+            except:
+                intermediate_list = []
+            return {"deep_summary": deep_summary, "intermediate_summaries": intermediate_list}
+        return None
+
+    def save_thesis_plan(self, project_id, plan_json):
+        try:
+             self.cursor.execute("UPDATE thesis_projects SET plan_json = ? WHERE id = ?", (plan_json, project_id))
+             self.conn.commit()
+        except Exception as e:
+             logger.error(f"Error saving thesis plan: {e}")
+
+    def get_thesis_plan(self, project_id):
+        try:
+            self.cursor.execute("SELECT plan_json FROM thesis_projects WHERE id = ?", (project_id,))
+            row = self.cursor.fetchone()
+            if row and row[0]:
+                return row[0]
+            return None
+        except Exception as e:
+            logger.error(f"Error getting thesis plan: {e}")
+            return None

@@ -275,6 +275,8 @@ async def index_files(request: Request):
 
 @app.get("/llm_providers")
 async def get_llm_providers():
+    ollama_text_models, ollama_image_models = rag_utils.get_ollama_models()
+
     return {
         "providers": [
             {
@@ -297,8 +299,8 @@ async def get_llm_providers():
                 "name": "Ollama",
                 "text_endpoint": "http://localhost:11434/v1",
                 "image_endpoint": "http://localhost:11434/v1",
-                "text_models": ["gemma2:latest", "llama3:latest", "mistral:latest"],
-                "image_models": ["moondream:latest", "llava:latest"],
+                "text_models": ollama_text_models,
+                "image_models": ollama_image_models,
                 "api_key_prefix": "ollama"
             },
             {
@@ -431,6 +433,131 @@ async def deep_analysis(request: DeepAnalysisRequest):
     ]
 
     return {"schema_id": schema_id, "results": formatted_results}
+
+
+
+# --- Thesis Manager Endpoints ---
+from . import thesis_logic
+
+class ThesisProjectCreate(BaseModel):
+    name: str
+    description: str = ""
+
+class ThesisStructureRequest(BaseModel):
+    chapters: List[dict] # [{"title": "...", "description": "..."}]
+    use_advanced_indexing: bool = True
+
+@app.post("/thesis_projects", status_code=201)
+async def create_thesis_project(project: ThesisProjectCreate):
+    project_id = db.create_thesis_project(project.name, project.description)
+    if project_id is None:
+        raise HTTPException(status_code=409, detail=f"A project with the name '{project.name}' already exists.")
+    return {"id": project_id, "name": project.name, "description": project.description}
+
+@app.get("/thesis_projects")
+async def get_thesis_projects():
+    projects = db.get_thesis_projects()
+    return [{"id": p[0], "name": p[1], "description": p[2], "created_at": p[3]} for p in projects]
+
+@app.post("/thesis_projects/{project_id}/generate_structure")
+async def generate_thesis_structure_endpoint(project_id: int, request: ThesisStructureRequest):
+    # Verify project exists
+    if not db.get_thesis_project(project_id):
+        raise HTTPException(status_code=404, detail="Thesis project not found.")
+        
+    try:
+        structure = await thesis_logic.generate_thesis_structure(
+            project_id=project_id,
+            chapters=request.chapters,
+            use_advanced_indexing=request.use_advanced_indexing
+        )
+        return {"structure": structure}
+    except Exception as e:
+        logger.error(f"Error generating structure: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate structure: {e}")
+
+@app.put("/thesis_projects/{project_id}/plan")
+async def save_thesis_plan_endpoint(project_id: int, request: ThesisStructureRequest):
+    # We reuse ThesisStructureRequest structure (chapters list)
+    try:
+        plan_json = json.dumps(request.chapters)
+        db.save_thesis_plan(project_id, plan_json)
+        return {"message": "Plan saved successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save plan: {e}")
+
+@app.get("/thesis_projects/{project_id}/plan")
+async def get_thesis_plan_endpoint(project_id: int):
+    plan_json = db.get_thesis_plan(project_id)
+    if plan_json:
+        return json.loads(plan_json)
+    return []
+
+@app.get("/thesis_projects/{project_id}/structure")
+async def get_thesis_structure_endpoint(project_id: int):
+    structure = db.get_thesis_structure(project_id)
+    if structure:
+        return json.loads(structure)
+    return []
+
+class DeepSummaryRequest(BaseModel):
+    file_path: str
+
+@app.post("/deep_summary")
+async def generate_deep_summary_endpoint(request: DeepSummaryRequest):
+    """
+    Retrieves the deep summary from DB or generates it if missing.
+    """
+    file_path = request.file_path
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    # Check cache first
+    cached_data = db.get_deep_summary(file_path)
+    if cached_data:
+         # formatted dict from db
+         return {"deep_summary": cached_data["deep_summary"], "intermediate_summaries": cached_data["intermediate_summaries"], "cached": True}
+         
+    # Generate
+    try:
+        # thesis_logic.summarize_file_map_reduce returns only the string summary currently
+        # But it saves both to DB. safely we can re-read DB or update logic return.
+        # Let's update logic return to be clean, or just re-read DB. Re-reading DB is safest for consistency.
+        summary_text = await thesis_logic.summarize_file_map_reduce(file_path)
+        
+        # Re-fetch to get the full object (including intermediates) that was just saved
+        cached_data = db.get_deep_summary(file_path)
+        if cached_data:
+             return {"deep_summary": cached_data["deep_summary"], "intermediate_summaries": cached_data["intermediate_summaries"], "cached": False}
+        
+        # Fallback
+        return {"deep_summary": summary_text, "intermediate_summaries": [], "cached": False}
+    except Exception as e:
+        logger.error(f"Error generating deep summary for {file_path}: {e}")
+        raise HTTPException(status_code=500, detail=f"Generation failed: {e}")
+    structure_json = db.get_thesis_structure(project_id)
+    if not structure_json:
+        return {"structure": []}
+    return {"structure": json.loads(structure_json)}
+
+class DeepSummaryRequest(BaseModel):
+    file_path: str
+
+@app.post("/files/deep_summary")
+async def generate_deep_summary_endpoint(request: DeepSummaryRequest):
+    if not os.path.exists(request.file_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+        
+    try:
+        summary = await thesis_logic.summarize_file_map_reduce(request.file_path)
+        return {"file_path": request.file_path, "deep_summary": summary}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate deep summary: {e}")
+
+@app.get("/files/deep_summary")
+async def get_deep_summary_endpoint(file_path: str):
+    summary = db.get_deep_summary(file_path)
+    return {"file_path": file_path, "deep_summary": summary}
 
 
 if __name__ == "__main__":

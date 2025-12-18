@@ -39,9 +39,36 @@ def is_tesseract_installed():
         _tesseract_installed = shutil.which("tesseract") is not None
     return _tesseract_installed
 
+import requests
+
 def get_chroma_client(path="chroma_db"):
     """Initializes and returns a ChromaDB client."""
     return chromadb.PersistentClient(path=path)
+
+def get_ollama_models(base_url="http://localhost:11434"):
+    """
+    Fetches the list of available models from a local Ollama instance.
+    Returns separate lists for text and image models (heuristic based).
+    """
+    try:
+        response = requests.get(f"{base_url}/api/tags", timeout=2)
+        if response.status_code == 200:
+            models_data = response.json().get("models", [])
+            model_names = [m["name"] for m in models_data]
+            
+            # Simple heuristic to categorize models. 
+            # In a real scenario, we might need more metadata or user config.
+            # For now, we assume all are text capable, and check for specific vision keywords for image.
+            # Or simplified: just return all as text models, and specific ones as image.
+            
+            vision_keywords = ["llava", "moondream", "bakllava", "vision"]
+            image_models = [m for m in model_names if any(k in m for k in vision_keywords)]
+            return model_names, image_models
+    except Exception as e:
+        logger.warning(f"Could not fetch Ollama models: {e}")
+        
+    # Fallback defaults if unreachable
+    return ["gemma2:latest", "llama3:latest", "mistral:latest"], ["moondream:latest", "llava:latest"]
 
 async def warm_up_unstructured():
     """
@@ -223,6 +250,46 @@ def index_documents_unstructured(elements, collection):
     logger.info(f"Successfully indexed {chunk_index} semantic chunks.")
 
 
+def load_document_unstructured(file_path):
+    """
+    Loads a single document using Unstructured partition logic, handling dependency checks.
+    Returns a list of elements.
+    """
+    poppler_present = is_poppler_installed()
+    tesseract_present = is_tesseract_installed()
+
+    if not poppler_present:
+        logger.warning("Poppler is not installed or not in PATH. PDF parsing will be degraded to 'fast' mode.")
+    if not tesseract_present:
+        logger.warning("Tesseract is not installed or not in PATH. Image parsing will be skipped.")
+
+    try:
+        # Skip image files if Tesseract is not installed
+        file_ext = os.path.splitext(file_path)[1].lower()
+        if file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp'] and not tesseract_present:
+             logger.warning(f"Skipping image {file_path} because Tesseract is missing.")
+             return []
+
+        strategy = "auto"
+        if file_ext == ".pdf":
+            # Use hi_res only if both Poppler and Tesseract are available to avoid crashes on OCR
+            if poppler_present and tesseract_present:
+                strategy = "hi_res"
+            else:
+                strategy = "fast"
+                logger.warning(f"Using 'fast' strategy for {file_path} because Tesseract/Poppler is missing.")
+
+        elements = partition(filename=file_path, strategy=strategy)
+        for element in elements:
+             # Keep the original filename for display
+             element.metadata.filename = os.path.basename(file_path)
+             # Add full path for unique identification and access
+             element.metadata.file_path = file_path
+        return elements
+    except Exception as e:
+        logger.error(f"Failed to process {file_path} with Unstructured: {e}")
+        return []
+
 async def index_files_from_path(root_path: str, recursive: bool, required_exts: list, use_advanced_indexing: bool = False):
     """Loads documents from a path and indexes them into ChromaDB."""
     collection_name = "file_embeddings_unstructured" if use_advanced_indexing else "file_embeddings"
@@ -246,34 +313,11 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
         logger.info(f"Found {len(filtered_files)} file(s) to process with Unstructured.")
 
         all_elements = []
-        poppler_present = is_poppler_installed()
-        tesseract_present = is_tesseract_installed()
-
-        if not poppler_present:
-            logger.warning("Poppler is not installed or not in PATH. PDF parsing will be degraded to 'fast' mode.")
-        if not tesseract_present:
-            logger.warning("Tesseract is not installed or not in PATH. Image parsing will be skipped.")
+        # Checks are now internal to load_document_unstructured, but we can log once if we want (omitted for brevity)
 
         for filename in filtered_files:
-            try:
-                # Skip image files if Tesseract is not installed
-                file_ext = os.path.splitext(filename)[1].lower()
-                if file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp'] and not tesseract_present:
-                    continue
-
-                strategy = "auto"
-                if file_ext == ".pdf":
-                    strategy = "hi_res" if poppler_present else "fast"
-
-                elements = partition(filename=filename, strategy=strategy)
-                for element in elements:
-                    # Keep the original filename for display
-                    element.metadata.filename = os.path.basename(filename)
-                    # Add full path for unique identification and access
-                    element.metadata.file_path = filename
-                all_elements.extend(elements)
-            except Exception as e:
-                logger.error(f"Failed to process {filename} with Unstructured: {e}")
+             elements = load_document_unstructured(filename)
+             all_elements.extend(elements)
 
         # This new function will handle the semantic chunking and indexing
         index_documents_unstructured(all_elements, collection)
@@ -303,6 +347,55 @@ async def index_files_from_path(root_path: str, recursive: bool, required_exts: 
         documents = reader.load_data()
         logger.info(f"Loaded {len(documents)} document(s) from the specified path.")
         index_documents(documents, collection)
+
+async def retrieve_relevant_chunks(query: str, collection, top_k: int = 50):
+    """
+    Retrieves and re-ranks relevant chunks for a query without generating an LLM response.
+    Used for Global Relevance Scoring.
+    """
+    logger.info(f"Retrieving relevant chunks for query: {query}")
+    query_embedding = model.encode(query, convert_to_tensor=False).tolist()
+
+    # Fetch more initial results for re-ranking
+    initial_results_count = top_k * 4
+    
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=initial_results_count,
+        include=["documents", "metadatas", "distances"]
+    )
+
+    documents = results.get('documents', [[]])[0]
+    metadatas = results.get('metadatas', [[]])[0]
+    
+    if not documents:
+        return []
+
+    # Re-ranking logic
+    # Uses CrossEncoder if available and collection is unstructured (or always if we want high precision)
+    # For now, let's assume if we are calling this, we want high precision.
+    logger.info(f"Applying CrossEncoder re-ranking to {len(documents)} results.")
+    sentence_pairs = [[query, doc] for doc in documents]
+    scores = cross_encoder.predict(sentence_pairs)
+    scored_results = sorted(zip(scores, documents, metadatas), key=lambda x: x[0], reverse=True)
+
+    unique_results = []
+    seen = set()
+    for score, doc, meta in scored_results:
+        # Standardize meta keys if needed
+        file_path = meta.get("file_path", "unknown")
+        identifier = (file_path, doc[:50])
+        if identifier not in seen:
+            unique_results.append({
+                "document": doc,
+                "metadata": meta,
+                "score": float(score)
+            })
+            seen.add(identifier)
+        if len(unique_results) >= top_k:
+            break
+            
+    return unique_results
 
 async def query_rag(query: str, collection, top_k: int = 5, prompt_template: str = None):
     """

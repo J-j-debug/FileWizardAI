@@ -15,5 +15,10 @@ docx2txt
 nbconvert
 openpyxl
 chromadb
+scipy>=1.11.2,<1.12
 sentence-transformers
 pypdf
+
+# --- System Dependencies (Install via apt/brew, not pip) ---
+# tesseract-ocr (Required for OCR in Advanced Indexing) -> sudo apt install tesseract-ocr
+# poppler-utils (Required for PDF processing in Advanced Indexing) -> sudo apt install poppler-utils

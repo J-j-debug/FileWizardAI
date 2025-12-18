@@ -12,6 +12,7 @@ from .database import SQLiteDB
 from .settings import CustomFormatter
 from .settings import Model
 from . import rag_utils
+from . import thesis_logic
 import shutil
 
 logger = logging.getLogger()
@@ -23,12 +24,13 @@ logger.addHandler(ch)
 db = SQLiteDB()
 
 
-async def summarize_document(doc: Document):
+async def summarize_document(doc: Document, strategy: str = 'fast'):
     """
     Summarizes a document, ensuring robustness against empty files and invalid cache entries.
+    Supports strategies: 'fast' (default), 'full' (vectors/map-reduce).
     """
     file_path = doc.metadata.get('file_path')
-    logger.info(f"Processing file: {file_path}")
+    logger.info(f"Processing file: {file_path} with strategy: {strategy}")
 
     # 1. Validate input document
     if not file_path:
@@ -39,13 +41,19 @@ async def summarize_document(doc: Document):
     summary = None
 
     # 2. Check for existing, valid summary in the database
-    if db.is_file_exist(file_path, doc_hash):
+    # For 'full' strategy, we check deep_summary first
+    if strategy == 'full':
+        existing_deep = db.get_deep_summary(file_path)
+        if existing_deep:
+            logger.info(f"Found cached deep summary for {file_path}.")
+            return {"file_path": file_path, "summary": existing_deep}
+            
+    # For 'fast', we check the standard summary
+    if strategy == 'fast' and db.is_file_exist(file_path, doc_hash):
         summary = db.get_file_summary(file_path)
         if summary and summary.strip():
             logger.info(f"Found valid cached summary for {file_path}.")
             return {"file_path": file_path, "summary": summary}
-        else:
-            logger.warning(f"Cached summary for {file_path} is invalid. Regenerating.")
 
     # 3. Handle unreadable or empty documents
     if not doc.text or not doc.text.strip():
@@ -54,23 +62,34 @@ async def summarize_document(doc: Document):
         db.insert_file_summary(file_path, doc_hash, summary)
         return {"file_path": file_path, "summary": summary}
 
-    # 4. Generate new summary if no valid one was found
+    # 4. Generate new summary
     try:
         model = Model()
-        summary = await model.summarize_document_api(doc.text)
+        
+        if strategy == 'full':
+             # Use the map-reduce logic from thesis_logic
+             # This automatically saves to deep_summary in DB
+             summary = await thesis_logic.summarize_file_map_reduce(file_path)
+        else:
+            # Default 'fast' strategy
+            summary = await model.summarize_document_api(doc.text)
+            
         if summary:
-            db.insert_file_summary(file_path, doc_hash, summary)
+            # cache it
+            if strategy == 'fast':
+                db.insert_file_summary(file_path, doc_hash, summary)
+            # 'full' is already cached by summarize_file_map_reduce
+            
             logger.info(f"Successfully generated and cached new summary for {file_path}.")
         else:
             summary = "Failed to generate summary."
             logger.error(f"LLM failed to generate summary for {file_path}.")
-            db.insert_file_summary(file_path, doc_hash, summary)
 
     except Exception as e:
         summary = f"An error occurred during summarization: {e}"
         logger.error(f"Exception during summarization for {file_path}: {e}")
-        db.insert_file_summary(file_path, doc_hash, summary)
-
+        if strategy == 'fast':
+             db.insert_file_summary(file_path, doc_hash, summary)
 
     return {"file_path": file_path, "summary": summary}
 
@@ -90,18 +109,18 @@ async def summarize_image_document(doc: ImageDocument):
     }
 
 
-async def dispatch_summarize_document(doc):
+async def dispatch_summarize_document(doc, strategy='fast'):
     if isinstance(doc, ImageDocument):
         return await summarize_image_document(doc)
     elif isinstance(doc, Document):
-        return await summarize_document(doc)
+        return await summarize_document(doc, strategy=strategy)
     else:
         raise ValueError("Document type not supported")
 
 
-async def get_summaries(documents):
+async def get_summaries(documents, strategy='fast'):
     docs_summaries = await asyncio.gather(
-        *[dispatch_summarize_document(doc) for doc in documents]
+        *[dispatch_summarize_document(doc, strategy=strategy) for doc in documents]
     )
     return docs_summaries
 
@@ -138,11 +157,11 @@ def load_documents(path: str, recursive: bool, required_exts: list, token_count:
     return documents
 
 
-async def get_dir_summaries(path: str, recursive: bool, required_exts: list, token_count: int = 6144):
+async def get_dir_summaries(path: str, recursive: bool, required_exts: list, token_count: int = 6144, strategy: str = 'fast'):
     doc_dicts = load_documents(path, recursive, required_exts, token_count=token_count)
 
     await remove_deleted_files()
-    files_summaries = await get_summaries(doc_dicts)
+    files_summaries = await get_summaries(doc_dicts, strategy=strategy)
 
     # Convert path to relative path
     for summary in files_summaries:
@@ -155,7 +174,7 @@ async def run(directory_path: str, recursive: bool, required_exts: list, prompt:
     logger.info("Starting ...")
     logger.info(f"Summarization strategy: {summary_strategy}, Token count: {token_count}")
 
-    summaries = await get_dir_summaries(directory_path, recursive, required_exts, token_count=token_count)
+    summaries = await get_dir_summaries(directory_path, recursive, required_exts, token_count=token_count, strategy=summary_strategy)
     model = Model()
     files = await model.create_file_tree_api(summaries, prompt=prompt)
 

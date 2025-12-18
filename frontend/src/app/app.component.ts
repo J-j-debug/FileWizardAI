@@ -12,6 +12,7 @@ import { LlmSettingsComponent } from './components/llm-settings.component';
 import { ResearchHubComponent } from './components/research-hub.component';
 import { PromptManagerComponent } from './components/prompt-manager.component';
 import { DeepResearchComponent } from './components/deep-research.component';
+import { ThesisManagerComponent } from './components/thesis-manager.component';
 
 // Angular Material Modules
 import { MatIconModule } from '@angular/material/icon';
@@ -46,6 +47,7 @@ interface ExtensionGroup {
     ResearchHubComponent,
     PromptManagerComponent,
     DeepResearchComponent,
+    ThesisManagerComponent,
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -75,6 +77,9 @@ interface ExtensionGroup {
             </button>
             <button class="nav-button" [class.active]="activeView === 'deep_research'" (click)="activeView = 'deep_research'">
               Deep Research
+            </button>
+            <button class="nav-button" [class.active]="activeView === 'thesis'" (click)="activeView = 'thesis'">
+              Thesis Manager
             </button>
           </div>
           <p class="subtitle">Intelligent file management at your fingertips</p>
@@ -173,13 +178,13 @@ interface ExtensionGroup {
                         <mat-label>Stratégie</mat-label>
                         <mat-select [(ngModel)]="summaryStrategy">
                             <mat-option value="fast">Rapide (Début du document)</mat-option>
-                            <mat-option value="balanced" [disabled]="true">Équilibré (Début + Fin)</mat-option>
-                            <mat-option value="full" [disabled]="true">Complet (Document entier)</mat-option>
+                            <mat-option value="balanced">Équilibré (Début + Fin)</mat-option>
+                            <mat-option value="full">Complet (Document entier - Map/Reduce)</mat-option>
                         </mat-select>
                     </mat-form-field>
                     <div class="token-slider">
-                        <label>Tokens: {{ tokenCount }}</label>
-                        <mat-slider min="1024" max="16384" step="1024" discrete="true">
+                        <label [class.disabled-text]="summaryStrategy === 'full'">Tokens: {{ tokenCount }} <span *ngIf="summaryStrategy === 'full'">(Auto)</span></label>
+                        <mat-slider min="1024" max="16384" step="1024" discrete="true" [disabled]="summaryStrategy === 'full'">
                             <input matSliderThumb [(ngModel)]="tokenCount">
                         </mat-slider>
                     </div>
@@ -286,6 +291,10 @@ interface ExtensionGroup {
 
       <div *ngIf="activeView === 'deep_research'">
         <app-deep-research></app-deep-research>
+      </div>
+
+      <div *ngIf="activeView === 'thesis'">
+        <app-thesis-manager></app-thesis-manager>
       </div>
     </div>
   `,
@@ -1072,6 +1081,10 @@ interface ExtensionGroup {
       50% {
         transform: translateY(-2px);
       }
+    }
+    .disabled-text {
+      color: var(--text-secondary);
+      opacity: 0.5;
     }
   `]
 })

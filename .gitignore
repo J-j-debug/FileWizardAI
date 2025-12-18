@@ -28,3 +28,4 @@ FileWizardAi.db
 chroma_db/
 *.log
 node_modules/
+test_env/
