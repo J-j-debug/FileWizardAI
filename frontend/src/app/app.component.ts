@@ -13,6 +13,7 @@ import { ResearchHubComponent } from './components/research-hub.component';
 import { PromptManagerComponent } from './components/prompt-manager.component';
 import { DeepResearchComponent } from './components/deep-research.component';
 import { ThesisManagerComponent } from './components/thesis-manager.component';
+import { ProgressDialogComponent } from './components/progress-dialog.component';
 
 // Angular Material Modules
 import { MatIconModule } from '@angular/material/icon';
@@ -48,6 +49,7 @@ interface ExtensionGroup {
     PromptManagerComponent,
     DeepResearchComponent,
     ThesisManagerComponent,
+    ProgressDialogComponent,
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -128,7 +130,9 @@ interface ExtensionGroup {
               <mat-form-field appearance="outline" class="root-path-field">
                 <mat-label>Root Path</mat-label>
                 <input matInput [(ngModel)]="rootPath" (ngModelChange)="onPathChange($event)" placeholder="Click the folder icon to select a directory">
-                <mat-icon matSuffix>folder_open</mat-icon>
+                <button mat-icon-button matSuffix (click)="browseFolder()" matTooltip="Browse Folder">
+                  <mat-icon>folder_open</mat-icon>
+                </button>
               </mat-form-field>
             </div>
 
@@ -188,6 +192,14 @@ interface ExtensionGroup {
                             <input matSliderThumb [(ngModel)]="tokenCount">
                         </mat-slider>
                     </div>
+                </div>
+                <div class="strategy-controls" style="margin-top: 1rem; display: flex; gap: 20px; flex-wrap: wrap;">
+                     <mat-checkbox [(ngModel)]="advancedMode" matTooltip="Analyze all files first to create a cohesive global structure. Slower but better organization.">
+                        Advanced Mode (Taxonomy-First)
+                     </mat-checkbox>
+                     <mat-checkbox [(ngModel)]="forceRefresh" matTooltip="Re-analyze files even if summaries exist in cache.">
+                        Force Refresh
+                     </mat-checkbox>
                 </div>
                 <p class="help-text">Unité en tokens (environ 75 mots pour 100 tokens).</p>
                  <p *ngIf="summaryStrategy === 'full'" class="warning-text">
@@ -259,6 +271,7 @@ interface ExtensionGroup {
                                [rootPath]="rootPath"
                                [headline]="'Optimized Structure'"
                                [index]=1
+                               [fileMap]="dstToSrcMap"
                                (notify)="onNotify($event)">
                 </app-folder-tree>
               </div>
@@ -1154,6 +1167,7 @@ export class AppComponent {
   original_files: any;
   srcPaths: any;
   dstPaths: any;
+  dstToSrcMap: { [key: string]: string } = {};
   rootPath: string = "";
   isRecursive: boolean = false;
   successMessage: string = '';
@@ -1172,6 +1186,8 @@ export class AppComponent {
   // Summary Strategy
   summaryStrategy: string = 'fast';
   tokenCount: number = 6144;
+  advancedMode: boolean = false;
+  forceRefresh: boolean = false;
 
   constructor(private dataService: DataService, public dialog: MatDialog) {
     // Check for saved theme preference
@@ -1220,6 +1236,23 @@ export class AppComponent {
     });
   }
 
+  browseFolder() {
+    this.dataService.browseFolder().subscribe({
+      next: (res) => {
+        if (res.path) {
+          this.rootPath = res.path.replaceAll("\\", "/"); // Normalize
+          // Optionally trigger onPathChange if needed, but ngModel handles it if user types.
+          // Since we set it programmatically, onPathChange won't trigger automatically via input event.
+          // But binding updates.
+          this.onPathChange(this.rootPath);
+        } else if (res.error) {
+          console.error("Browse folder error:", res.error);
+        }
+      },
+      error: (err) => console.error(err)
+    });
+  }
+
   toggleGroup(group: ExtensionGroup) {
     group.expanded = !group.expanded;
   }
@@ -1259,6 +1292,8 @@ export class AppComponent {
   }
 
   getFiles(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
     this.srcPaths = null;
     this.dstPaths = null;
     this.isLoading = true;
@@ -1268,19 +1303,45 @@ export class AppComponent {
     params = params.set("required_exts", this.filesExts.join(';'))
     params = params.set("token_count", this.tokenCount.toString());
     params = params.set("summary_strategy", this.summaryStrategy);
+    // Angular handles boolean to string conversion for HttpParams, but manual string ensures clarity
+    params = params.set("advanced_mode", String(this.advancedMode));
+    params = params.set("force_refresh", String(this.forceRefresh));
 
     // Only add the prompt if it's not the default one
     if (this.selectedPrompt !== this.defaultPrompt.content) {
       params = params.set("prompt", this.selectedPrompt);
     }
 
+    // Open Progress Dialog
+    const dialogRef = this.dialog.open(ProgressDialogComponent, {
+      width: '500px',
+      disableClose: true,
+      hasBackdrop: true
+    });
+
     this.dataService.getFormattedFiles(params).subscribe((data) => {
+      // Close dialog when finished
+      dialogRef.close();
+
       this.original_files = data
       this.original_files.items = this.original_files.items.map((item: any) => ({ src_path: item.src_path.replaceAll("\\\\", "/").replaceAll("\\", "/"), dst_path: item.dst_path }))
       let res = this.original_files.items.map((item: any) => ({ src_path: `${data.root_path}/${item.src_path}`, dst_path: `${data.root_path}/${item.dst_path}` }))
       this.srcPaths = res.map((r: any) => r.src_path);
       this.dstPaths = res.map((r: any) => r.dst_path);
+
+      this.dstToSrcMap = {};
+      res.forEach((r: any) => {
+        this.dstToSrcMap[r.dst_path.replaceAll("\\\\", "/").replaceAll("\\", "/")] = r.src_path.replaceAll("\\\\", "/").replaceAll("\\", "/");
+      });
+
       this.isLoading = false;
+    }, (error) => {
+      // Close dialog on error too, or let it stay open? 
+      // Dialog handles its own error polling, but here we got the main http error.
+      // Let's close it so user sees the main error message if any.
+      dialogRef.close();
+      this.isLoading = false;
+      this.errorMessage = "An error occurred during analysis.";
     })
   }
 

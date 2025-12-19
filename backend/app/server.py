@@ -171,16 +171,56 @@ async def get_default_prompt():
     default_prompt = Model.create_file_tree_api_chunk.__defaults__[0]
     return {"prompt": default_prompt}
 
+from .progress_tracker import tracker
+
+@app.get("/progress")
+async def get_progress():
+    return tracker.get_status()
+
+@app.get("/browse_folder")
+async def browse_folder():
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        
+        # Create hidden root window
+        root = tk.Tk()
+        root.withdraw()
+        
+        # Ensure it's on top
+        root.attributes('-topmost', True)
+        
+        # Open dialog
+        folder_path = filedialog.askdirectory()
+        
+        root.destroy()
+        
+        if folder_path:
+            return {"path": folder_path}
+        return {"path": ""}
+    except Exception as e:
+        # Fallback for headless environments or missing tkinter
+        print(f"Tkinter failed: {e}")
+        return {"error": str(e), "path": ""}
+
 @app.get("/get_files")
-async def get_files(root_path: str, recursive: bool, required_exts: str, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast'):
+async def get_files(root_path: str, recursive: bool, required_exts: str, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast', advanced_mode: bool = False, force_refresh: bool = False):
     if not os.path.exists(root_path):
         return HTTPException(status_code=404, detail=f"Path doesn't exist: {root_path}")
+    
+    tracker.start("Starting analysis...")
     required_exts = required_exts.split(';')
-    files = await run(root_path, recursive, required_exts, prompt=prompt, token_count=token_count, summary_strategy=summary_strategy)
-    return {
-        "root_path": root_path,
-        "items": files
-    }
+    try:
+        files = await run(root_path, recursive, required_exts, prompt=prompt, token_count=token_count, summary_strategy=summary_strategy, advanced_mode=advanced_mode, force_refresh=force_refresh)
+        tracker.complete()
+        return {
+            "root_path": root_path,
+            "items": files
+        }
+    except Exception as e:
+        tracker.update(status="Error", log=str(e))
+        tracker.is_running = False
+        raise e
 
 
 @app.post("/update_files")
@@ -516,7 +556,10 @@ async def generate_deep_summary_endpoint(request: DeepSummaryRequest):
     cached_data = db.get_deep_summary(file_path)
     if cached_data:
          # formatted dict from db
-         return {"deep_summary": cached_data["deep_summary"], "intermediate_summaries": cached_data["intermediate_summaries"], "cached": True}
+         return {"deep_summary": cached_data["deep_summary"], 
+                 "intermediate_summaries": cached_data.get("intermediate_summaries", []), 
+                 "original_chunks": cached_data.get("original_chunks", []),
+                 "cached": True}
          
     # Generate
     try:
@@ -528,10 +571,13 @@ async def generate_deep_summary_endpoint(request: DeepSummaryRequest):
         # Re-fetch to get the full object (including intermediates) that was just saved
         cached_data = db.get_deep_summary(file_path)
         if cached_data:
-             return {"deep_summary": cached_data["deep_summary"], "intermediate_summaries": cached_data["intermediate_summaries"], "cached": False}
+             return {"deep_summary": cached_data["deep_summary"], 
+                     "intermediate_summaries": cached_data.get("intermediate_summaries", []), 
+                     "original_chunks": cached_data.get("original_chunks", []),
+                     "cached": False}
         
         # Fallback
-        return {"deep_summary": summary_text, "intermediate_summaries": [], "cached": False}
+        return {"deep_summary": summary_text, "intermediate_summaries": [], "original_chunks": [], "cached": False}
     except Exception as e:
         logger.error(f"Error generating deep summary for {file_path}: {e}")
         raise HTTPException(status_code=500, detail=f"Generation failed: {e}")

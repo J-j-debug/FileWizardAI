@@ -66,12 +66,15 @@ async def summarize_file_map_reduce(file_path: str, chunk_token_size: int = 1000
     
     tasks = []
     for chunk in chunks:
-        prompt = "Summarize this section of the text in verified detail."
-        # We reuse generate_text_api or summarize_document_api logic
-        # customized prompt:
-        summary_prompt = f"Summarize the following text, capturing the key points and details. Text:\n\n{chunk[:100]}... (truncated for log)"
-        # actually passing full chunk
-        tasks.append(model.generate_text_api(f"Please provide a comprehensive summary of the following text section:\n\n{chunk}"))
+        # Prompt tuned for objective summarization
+        prompt = f"""You are an expert summarizer. Provide a detailed and objective summary of the following text section. 
+Refrain from offering opinions, critiques, or phrases like "This section discusses" or "The author argues". 
+Directly state the key information, facts, and concepts presented in the text.
+
+Text:
+{chunk}
+"""
+        tasks.append(model.generate_text_api(prompt))
 
     chunk_summaries = await asyncio.gather(*tasks)
     
@@ -81,11 +84,17 @@ async def summarize_file_map_reduce(file_path: str, chunk_token_size: int = 1000
     if len(chunks) == 1:
         final_summary = chunk_summaries[0]
     else:
-        final_summary = await model.generate_text_api(f"Succinctly summarize the following summaries to provide a coherent overview of the entire document:\n\n{combined_summary_text}")
+        reduce_prompt = f"""You are an expert summarizer. Synthesize the following intermediate summaries into a single, coherent, and objective summary of the entire document.
+Ensure a logical flow and cover all major topics. Do not analyze the writing style or provide meta-commentary.
+
+Intermediate Summaries:
+{combined_summary_text}
+"""
+        final_summary = await model.generate_text_api(reduce_prompt)
     
     # Save to DB
     # We need a method in DB to save deep_summary
-    db.save_deep_summary(file_path, final_summary, intermediate_summaries=chunk_summaries)
+    db.save_deep_summary(file_path, final_summary, intermediate_summaries=chunk_summaries, original_chunks=chunks)
     
     return final_summary
 

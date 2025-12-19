@@ -14,11 +14,24 @@ export class DataService {
   }
 
   getFormattedFiles(params: any): Observable<any> {
+    // Backend expects snake_case for advanced_mode
+    if (params.advancedMode !== undefined) {
+      params.advanced_mode = params.advancedMode;
+      delete params.advancedMode;
+    }
     return this.http.get<any>(this.apiUrl + "/get_files", { params: params });
+  }
+
+  getProgress(): Observable<any> {
+    return this.http.get<any>(this.apiUrl + "/progress");
   }
 
   getDefaultPrompt(): Observable<{ prompt: string }> {
     return this.http.get<{ prompt: string }>(`${this.apiUrl}/default_prompt`);
+  }
+
+  browseFolder(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/browse_folder`);
   }
 
   updateStructure(newStructureBody: any): Observable<any> {

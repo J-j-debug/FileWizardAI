@@ -131,6 +131,12 @@ class SQLiteDB:
         except sqlite3.OperationalError:
             # Column likely already exists
             pass
+            
+        try:
+            self.cursor.execute("ALTER TABLE files_summary ADD COLUMN original_chunks TEXT")
+        except sqlite3.OperationalError:
+            # Column likely already exists
+            pass
         
         self.conn.commit()
 
@@ -317,7 +323,7 @@ class SQLiteDB:
         result = self.cursor.fetchone()
         return result[0] if result else None
 
-    def save_deep_summary(self, file_path, summary, intermediate_summaries=None):
+    def save_deep_summary(self, file_path, summary, intermediate_summaries=None, original_chunks=None):
         # We use files_summary table, but update deep_summary column
         try:
             # Check if exists
@@ -325,10 +331,11 @@ class SQLiteDB:
             data = self.cursor.fetchone()
             
             intermediate_json = json.dumps(intermediate_summaries) if intermediate_summaries else None
+            chunks_json = json.dumps(original_chunks) if original_chunks else None
             
             if data:
-                self.cursor.execute("UPDATE files_summary SET deep_summary = ?, intermediate_summaries = ? WHERE file_path = ?", 
-                                  (summary, intermediate_json, file_path))
+                self.cursor.execute("UPDATE files_summary SET deep_summary = ?, intermediate_summaries = ?, original_chunks = ? WHERE file_path = ?", 
+                                  (summary, intermediate_json, chunks_json, file_path))
             else:
                 # Need to calculate hash for NOT NULL constraint
                 file_hash = "unknown"
@@ -339,27 +346,24 @@ class SQLiteDB:
                 except Exception:
                     pass
                     
-                self.cursor.execute("INSERT INTO files_summary (file_path, file_hash, deep_summary, intermediate_summaries) VALUES (?, ?, ?, ?)", 
-                                  (file_path, file_hash, summary, intermediate_json))
+                self.cursor.execute("INSERT INTO files_summary (file_path, file_hash, deep_summary, intermediate_summaries, original_chunks) VALUES (?, ?, ?, ?, ?)", 
+                                  (file_path, file_hash, summary, intermediate_json, chunks_json))
             self.conn.commit()
         except Exception as e:
             logger.error(f"Error saving deep summary: {e}")
 
     def get_deep_summary(self, file_path):
-        self.cursor.execute("SELECT deep_summary, intermediate_summaries FROM files_summary WHERE file_path = ?", (file_path,))
+        self.cursor.execute("SELECT deep_summary, intermediate_summaries, original_chunks FROM files_summary WHERE file_path = ?", (file_path,))
         result = self.cursor.fetchone()
         if result:
-            deep_summary = result[0]
             # TREAT MISSING DEEP SUMMARY AS CACHE MISS
-            if not deep_summary:
+            if not result[0]: # deep_summary
                 return None
-                
-            intermediate = result[1]
-            try:
-                intermediate_list = json.loads(intermediate) if intermediate else []
-            except:
-                intermediate_list = []
-            return {"deep_summary": deep_summary, "intermediate_summaries": intermediate_list}
+            return {
+                "deep_summary": result[0],
+                "intermediate_summaries": json.loads(result[1]) if result[1] else [],
+                "original_chunks": json.loads(result[2]) if result[2] else []
+            }
         return None
 
     def save_thesis_plan(self, project_id, plan_json):

@@ -1,12 +1,14 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTreeModule, MatTreeFlatDataSource, MatTreeFlattener } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Observable, of as observableOf } from 'rxjs';
 import { FlatTreeControl } from '@angular/cdk/tree';
 import { DataService } from '../data.service';
+import { DeepSummaryDialogComponent } from './deep-summary-dialog.component';
 
 /** File node data with nested structure. */
 export interface FileNode {
@@ -35,7 +37,8 @@ export interface TreeNode {
     MatTreeModule,
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatDialogModule
   ],
   template: `
     <div class="tree-container">
@@ -50,6 +53,9 @@ export interface TreeNode {
           <span class="node-name" [class.selected]="isSelected(node)" (click)="selectNode(node)">
             {{ node.name }}
           </span>
+          <button mat-icon-button *ngIf="node.type === 'file'" (click)="viewSummary(node, $event)" matTooltip="View AI Summary" class="info-button" color="primary">
+            <mat-icon style="font-size: 20px;">info</mat-icon>
+          </button>
         </mat-tree-node>
 
         <mat-tree-node *matTreeNodeDef="let node; when: hasChild" matTreeNodePadding class="fade-in">
@@ -199,8 +205,10 @@ export interface TreeNode {
   `]
 })
 
-export class FolderTreeComponent implements OnInit {
+export class FolderTreeComponent implements OnInit, OnChanges {
+  // ... (keep previous properties)
 
+  // NOTE: Code replacement for class definition start
   /** The TreeControl controls the expand/collapse state of tree nodes.  */
   treeControl: FlatTreeControl<TreeNode>;
 
@@ -214,12 +222,13 @@ export class FolderTreeComponent implements OnInit {
   @Input() headline: string = "";
   @Input() rootPath: string = "";
   @Input() index: number = 0;
+  @Input() fileMap: { [key: string]: string } = {}; // Map dst_path -> src_path
   @Output() notify = new EventEmitter<any>();
 
   sep = "/";
   isWin = navigator.userAgent.toLowerCase().includes('win')
 
-  constructor(private dataService: DataService) {
+  constructor(private dataService: DataService, private dialog: MatDialog) {
     this.treeFlattener = new MatTreeFlattener(
       this.transformer,
       this.getLevel,
@@ -231,8 +240,20 @@ export class FolderTreeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.dataSource.data = this.transformPathsToTree(this.paths)
-    this.expandRootNodes();
+    this.updateTree();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['paths']) {
+      this.updateTree();
+    }
+  }
+
+  updateTree(): void {
+    if (this.paths) {
+      this.dataSource.data = this.transformPathsToTree(this.paths);
+      this.expandRootNodes();
+    }
   }
 
   expandRootNodes(): void {
@@ -252,7 +273,7 @@ export class FolderTreeComponent implements OnInit {
 
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
-        if(part === '') continue;
+        if (part === '') continue;
         const isFile = i === parts.length - 1;
         const type = isFile ? 'file' : 'Folder';
         let node = current.children?.find(child => child.name === part && child.type === type);
@@ -371,5 +392,23 @@ export class FolderTreeComponent implements OnInit {
     const nodes = this.treeControl.dataNodes;
     for (let i = 0; i < nodes.length; i++) nodes[i].highlighted = false;
     node.highlighted = true;
+  }
+
+  viewSummary(node: TreeNode, event: Event): void {
+    event.stopPropagation();
+    // Resolve absolute/original path
+    // 1. Try fileMap (if dst_path -> src_path)
+    let filePath = this.fileMap[node.path];
+
+    // 2. If not found, use node.path (which is absolute in our architecture)
+    if (!filePath) {
+      filePath = node.path;
+    }
+
+    this.dialog.open(DeepSummaryDialogComponent, {
+      width: '800px',
+      height: '80vh',
+      data: { filePath: filePath }
+    });
   }
 }

@@ -34,6 +34,15 @@ import { DataService } from '../data.service';
                     </div>
                 </div>
             </mat-tab>
+            <mat-tab label="Original Text (Chunks)" *ngIf="summary.original_chunks?.length">
+                <div class="intermediate-list">
+                    <div *ngFor="let chunk of summary.original_chunks; let i = index" class="chunk-item">
+                        <strong>Part {{i + 1}} (Original):</strong>
+                        <pre class="original-text">{{ chunk }}</pre>
+                        <hr>
+                    </div>
+                </div>
+            </mat-tab>
         </mat-tab-group>
         
         <p *ngIf="summary.cached" class="cache-badge">Fetched from Cache</p>
@@ -54,6 +63,16 @@ import { DataService } from '../data.service';
     .intermediate-list { padding: 1rem; max-height: 400px; overflow-y: auto; }
     .chunk-item { margin-bottom: 1rem; }
     .error-msg { color: red; padding: 1rem; }
+    .original-text {
+        white-space: pre-wrap;
+        background: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        max-height: 500px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+    }
   `]
 })
 export class DeepSummaryDialogComponent implements OnInit {

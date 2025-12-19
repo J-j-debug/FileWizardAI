@@ -9,6 +9,7 @@ import hashlib
 import json
 
 from .database import SQLiteDB
+from .progress_tracker import tracker
 from .settings import CustomFormatter
 from .settings import Model
 from . import rag_utils
@@ -24,7 +25,7 @@ logger.addHandler(ch)
 db = SQLiteDB()
 
 
-async def summarize_document(doc: Document, strategy: str = 'fast'):
+async def summarize_document(doc: Document, strategy: str = 'fast', force_refresh: bool = False):
     """
     Summarizes a document, ensuring robustness against empty files and invalid cache entries.
     Supports strategies: 'fast' (default), 'full' (vectors/map-reduce).
@@ -42,14 +43,16 @@ async def summarize_document(doc: Document, strategy: str = 'fast'):
 
     # 2. Check for existing, valid summary in the database
     # For 'full' strategy, we check deep_summary first
-    if strategy == 'full':
+    # 2. Check for existing, valid summary in the database
+    # For 'full' strategy, we check deep_summary first
+    if strategy == 'full' and not force_refresh:
         existing_deep = db.get_deep_summary(file_path)
         if existing_deep:
             logger.info(f"Found cached deep summary for {file_path}.")
-            return {"file_path": file_path, "summary": existing_deep}
+            return {"file_path": file_path, "summary": existing_deep["deep_summary"]}
             
     # For 'fast', we check the standard summary
-    if strategy == 'fast' and db.is_file_exist(file_path, doc_hash):
+    if strategy == 'fast' and not force_refresh and db.is_file_exist(file_path, doc_hash):
         summary = db.get_file_summary(file_path)
         if summary and summary.strip():
             logger.info(f"Found valid cached summary for {file_path}.")
@@ -94,10 +97,10 @@ async def summarize_document(doc: Document, strategy: str = 'fast'):
     return {"file_path": file_path, "summary": summary}
 
 
-async def summarize_image_document(doc: ImageDocument):
+async def summarize_image_document(doc: ImageDocument, force_refresh: bool = False):
     logger.info(f"Processing image {doc.image_path}")
     image_hash = get_file_hash(doc.image_path)
-    if db.is_file_exist(doc.image_path, image_hash):
+    if not force_refresh and db.is_file_exist(doc.image_path, image_hash):
         summary = db.get_file_summary(doc.image_path)
     else:
         model = Model()
@@ -109,18 +112,18 @@ async def summarize_image_document(doc: ImageDocument):
     }
 
 
-async def dispatch_summarize_document(doc, strategy='fast'):
+async def dispatch_summarize_document(doc, strategy='fast', force_refresh=False):
     if isinstance(doc, ImageDocument):
-        return await summarize_image_document(doc)
+        return await summarize_image_document(doc, force_refresh=force_refresh)
     elif isinstance(doc, Document):
-        return await summarize_document(doc, strategy=strategy)
+        return await summarize_document(doc, strategy=strategy, force_refresh=force_refresh)
     else:
         raise ValueError("Document type not supported")
 
 
-async def get_summaries(documents, strategy='fast'):
+async def get_summaries(documents, strategy='fast', force_refresh=False):
     docs_summaries = await asyncio.gather(
-        *[dispatch_summarize_document(doc, strategy=strategy) for doc in documents]
+        *[dispatch_summarize_document(doc, strategy=strategy, force_refresh=force_refresh) for doc in documents]
     )
     return docs_summaries
 
@@ -135,12 +138,19 @@ def load_documents(path: str, recursive: bool, required_exts: list, token_count:
     # If no specific extensions are required, set to None to load all files.
     # An empty list would load no files.
     extensions_to_load = required_exts if required_exts else None
-    reader = SimpleDirectoryReader(
-        input_dir=path,
-        recursive=recursive,
-        required_exts=extensions_to_load,
-        errors='ignore'
-    )
+    try:
+        reader = SimpleDirectoryReader(
+            input_dir=path,
+            recursive=recursive,
+            required_exts=extensions_to_load,
+            errors='ignore'
+        )
+        # Force initialization to check for files
+        # iter_data() actually loads files, but init might raise if input_dir empty? 
+        # The stack trace says __init__ calls _add_files calls raise ValueError.
+    except ValueError:
+        logger.warning(f"No files found in {path} with extensions {extensions_to_load}")
+        return []
     splitter = TokenTextSplitter(chunk_size=token_count)
     documents = []
     for docs in reader.iter_data():
@@ -157,11 +167,20 @@ def load_documents(path: str, recursive: bool, required_exts: list, token_count:
     return documents
 
 
-async def get_dir_summaries(path: str, recursive: bool, required_exts: list, token_count: int = 6144, strategy: str = 'fast'):
+async def get_dir_summaries(path: str, recursive: bool, required_exts: list, token_count: int = 6144, strategy: str = 'fast', force_refresh: bool = False):
+    tracker.update(status="Loading documents...", percent=5)
     doc_dicts = load_documents(path, recursive, required_exts, token_count=token_count)
+    tracker.update(status=f"Loaded {len(doc_dicts)} documents", percent=10)
 
     await remove_deleted_files()
-    files_summaries = await get_summaries(doc_dicts, strategy=strategy)
+    
+    # We pass the tracker to get_summaries if we want granular updates there, or we monitor it here if we refactor get_summaries.
+    # actually get_summaries uses asyncio.gather, so it's all at once.
+    # To get granular progress with asyncio.gather, we'd need a wrapper.
+    
+    tracker.update(status="Summarizing files...", percent=15, log="Starting parallel summarization...")
+    files_summaries = await get_summaries(doc_dicts, strategy=strategy, force_refresh=force_refresh)
+    tracker.update(status="Summarization complete", percent=50, log="All files summarized.")
 
     # Convert path to relative path
     for summary in files_summaries:
@@ -170,14 +189,25 @@ async def get_dir_summaries(path: str, recursive: bool, required_exts: list, tok
     return files_summaries
 
 
-async def run(directory_path: str, recursive: bool, required_exts: list, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast'):
+from .advanced_organization import run_advanced_organization
+
+async def run(directory_path: str, recursive: bool, required_exts: list, prompt: str = None, token_count: int = 6144, summary_strategy: str = 'fast', advanced_mode: bool = False, force_refresh: bool = False):
     logger.info("Starting ...")
-    logger.info(f"Summarization strategy: {summary_strategy}, Token count: {token_count}")
+    logger.info(f"Summarization strategy: {summary_strategy}, Token count: {token_count}, Advanced Mode: {advanced_mode}, Force Refresh: {force_refresh}")
 
-    summaries = await get_dir_summaries(directory_path, recursive, required_exts, token_count=token_count, strategy=summary_strategy)
+    summaries = await get_dir_summaries(directory_path, recursive, required_exts, token_count=token_count, strategy=summary_strategy, force_refresh=force_refresh)
     model = Model()
-    files = await model.create_file_tree_api(summaries, prompt=prompt)
+    
+    if advanced_mode:
+        logger.info("Executing Advanced Organization (Two-Pass Taxonomy Mode)")
+        tracker.update(status="Advanced Organization: Generating Taxonomy...", percent=60)
+        files = await run_advanced_organization(summaries)
+    else:
+        # Standard "On-the-fly" organization
+        tracker.update(status="Standard Organization: Generating File Tree...", percent=60)
+        files = await model.create_file_tree_api(summaries, prompt=prompt)
 
+    tracker.update(status="Finalizing...", percent=90)
     # Recursively create dictionary from file paths
     tree = {}
     for file in files:

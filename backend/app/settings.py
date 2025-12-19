@@ -301,7 +301,105 @@ class Model:
                 attempt += 1
                 self.cnt_txt += 1
                 time.sleep(2)
-        return file_tree  # Will return empty list if all attempts fail
+        return file_tree
+
+    async def generate_taxonomy_proposal_api(self, summaries: list):
+        prompt = """
+        Analyze the following list of file summaries and propose a preliminary directory structure (taxonomy) that would logically organize them.
+        Focus on creating Broad, High-Level categories.
+        
+        Input Format: List of {path, summary}
+        Output Format: JSON object with a key "categories" containing a list of strings (folder paths).
+        Example: {"categories": ["Finance/Invoices", "Legal/Contracts", "HR"]}
+        """
+        try:
+            chat_completion = await self.async_text_clients[self.cnt_txt % self.text_keys_count].chat.completions.create(
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": json.dumps(summaries)},
+                ],
+                model=self.TEXT_MODEL_NAME,
+                response_format={"type": "json_object"},
+                temperature=0,
+            )
+            result = json.loads(chat_completion.choices[0].message.content)
+            return result.get("categories", [])
+        except Exception as e:
+            logger.error(f"Error generating taxonomy proposal: {e}")
+            return []
+
+    async def merge_taxonomies_api(self, proposals: list):
+        prompt = """
+        You are a Chief Information Architect.
+        You will receive a list of proposed directory structures (taxonomies) from different departments.
+        Your task is to MERGE them into a SINGLE, COHESIVE Master Taxonomy.
+        
+        CONSTRAINTS:
+        1. Avoid redundancy (e.g., merge "Invoices" and "Billing" into "Finance/Invoicing").
+        2. Create a hierarchy that is balanced (not too flat, not too deep).
+        3. **CRITICAL**: Avoid creating folders for single/isolated files. If a topic appears only once or twice across all proposals, group it into a broader category or "Miscellaneous".
+        4. Use standard naming conventions (Capitalized, Clear).
+        
+        Output Format: JSON object with a key "taxonomy" containing the final list of folder paths.
+        """
+        try:
+            # Flatten proposals slightly for the prompt context
+            context_str = json.dumps(proposals)
+            if len(context_str) > 12000: # Simple truncation safeguard
+                context_str = context_str[:12000] + "... (truncated)"
+                
+            chat_completion = await self.async_text_clients[self.cnt_txt % self.text_keys_count].chat.completions.create(
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": context_str},
+                ],
+                model=self.TEXT_MODEL_NAME,
+                response_format={"type": "json_object"},
+                temperature=0,
+            )
+            result = json.loads(chat_completion.choices[0].message.content)
+            return result.get("taxonomy", [])
+        except Exception as e:
+            logger.error(f"Error merging taxonomies: {e}")
+            return ["Miscellaneous"]
+
+    async def assign_files_to_taxonomy_api(self, summaries: list, taxonomy: list):
+        prompt = f"""
+        You are a File Clerk.
+        Your task is to assign each of the provided files to ONE of the categories in the Master Taxonomy.
+        
+        Master Taxonomy (Allowed Categories):
+        {json.dumps(taxonomy)}
+        
+        INSTRUCTIONS:
+        1. You must ONLY use categories from the Master Taxonomy. Do not invent new folders.
+        2. If a file does not fit perfectly, choose the "Best Fit" or "Miscellaneous" (if available).
+        3. Output a JSON list of file movements.
+        
+        Output Schema:
+        {{
+            "files": [
+                {{ "src_path": "original/path.pdf", "dst_path": "Category/filename.pdf" }}
+            ]
+        }}
+        """
+        try:
+            chat_completion = await self.async_text_clients[self.cnt_txt % self.text_keys_count].chat.completions.create(
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": json.dumps(summaries)},
+                ],
+                model=self.TEXT_MODEL_NAME,
+                response_format={"type": "json_object"},
+                temperature=0,
+            )
+            result = json.loads(chat_completion.choices[0].message.content)
+            return result.get("files", [])
+        except Exception as e:
+            logger.error(f"Error assigning files to taxonomy: {e}")
+            return []
+
+
 
 
 class CustomFormatter(logging.Formatter):
